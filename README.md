@@ -54,6 +54,10 @@ pnpm build
 
 Blender 4.5 GUIとBlender MCPでノート・壁時計を実操作で造形。編集元は art/classroom-dress.blend、ゲーム用は public/assets/classroom-dress.glb。2,108 triangles、約194KB。スクリーンショットは art/preview-*.png。モデルはThree.jsで描画する。詳細は art/README.md。
 
+## 撮影リスクとゲームオーバー
+
+写真が暗い・ぶれた・画角外なら同じ幽霊に再挑戦できる。一方、露光が危険な白飛びに達する／シャッターを開け続ける／第3幕で幽霊が接近限界に達すると死亡する。GAME OVER画面からRESTARTすると第1幕へ戻り、撮影記録はリセット。露光中は数値の正解表示を出さず、幽霊の姿・色・機械音から判断する。
+
 ## コード構成
 
 `src/main.ts` は3幕の状態遷移と描画ループを担当。UIの静的マークアップは `view.ts`、効果音は `audio.ts`、タッチ・マウス操作は `input.ts`、6枚羽根は `iris.ts`、撮影評価は `shot.ts` に分割。教室の描画は `world.ts` と `atmosphere.ts` に置く。
