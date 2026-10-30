@@ -1,6 +1,6 @@
 # 制作計画 / LONG EXPOSURE
 
-更新：2026-10-30。状態：**3幕プレイアブル実装・Chromeデスクトップ上の縦画面QA完了／実機・提出未完**。ゴールは「48時間ジャムの期限前に、スマホ縦画面で3体を撮影し、アルバムとエンディングまで到達できるHTML5ゲームをitch.ioへ提出する」。
+更新：2026-10-30。状態：**ゲーム品質改善版をGitHub Pages公開、公開URLで3幕完走・リプレイ確認／スマホ実機・itch.io提出未完**。ゴールは「48時間ジャムの期限前に、スマホ縦画面で3体を撮影し、アルバムとエンディングまで到達できるHTML5ゲームをitch.ioへ提出する」。
 
 ## 完了条件（利用者の操作で判定）
 
@@ -37,7 +37,9 @@
 - Three.js教室の床材、壁、黒板、窓、光と霊の手がかり、露光中のシグナル、シャッター反動、写真現像を改善。
 - 390×844のChromeで探索・約1秒の露光・signal表示・現像後の写真を実画面スクリーンショットで確認。シグナル「IMAGE SHARP · RELEASE!」が撮影品質に追随。
 - 3幕のクリア、アルバム、END、REPLAYの通し実行を再確認。実機Safari/Androidは未検証。
-- GitHub Pagesは静的gh-pagesブランチにデプロイし、公開URLでアセットを読み込めるかを確認する。アップロードだけでは完了とみなさない。
+- GitHub Pages公開URL：https://kikutadev.github.io/long-exposure-ghost-hunt/ 。静的gh-pagesブランチから配信（build_type=legacy、GitHub Actionsのworkflowは未使用）。GitHub APIでstatus=builtを確認。
+- 公開URLで HTTP 200、index.html、3体のPNG、JS/CSS参照を確認。Chrome縦390×844で徘徊霊1.2s、疾走霊0.41s、接近霊1.66s失敗→0.75s成功、3枚写真→END→REPLAYを通し検証。ブラウザエラー0。
+- 依然として実機Safari/Android、音量と入力の触感、itch.io埋め込みプレイは未検証。
 
 ## 直近の動作検証（2026-10-30）
 

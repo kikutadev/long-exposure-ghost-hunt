@@ -18,7 +18,7 @@ SLAPJAM #2（テーマ **Speed**）向け、スマホ縦画面の短編3D心霊�
 - [docs/PLAN.md](docs/PLAN.md)：締切を踏まえた制作順序、削る基準、確認すること。
 - [docs/adr/0001-core-camera-loop.md](docs/adr/0001-core-camera-loop.md)：固定視点・露光式撮影に決めた理由と却下案。
 
-最小の撮影ループから3幕まで実装済み。残作業は実機の手触り調整と配布先での動作確認。
+3幕まで実装しGitHub Pages上でクリアとリプレイを確認。残作業はiPhone Safari／Android Chrome実機での手触り確認とitch.io提出。
 
 ## ジャム要件（2026-10-30確認）
 
@@ -59,5 +59,6 @@ pnpm build
 - [x] 3幕を通して撮影・評価・アルバム・エンディング・リプレイの自動操作を確認
 - [x] 長押し解除・画面外解放・キャンセル・回転・連続撮影をChromeで確認
 - [x] 教室の質感、幽霊の発見の手がかり、露光中の視覚信号、シャッター反動、現像演出、環境音を改良
+- [x] GitHub Pagesへ静的ビルドを公開し、公開URLから3幕を完走・リプレイまで検証
 - [ ] iPhone Safari / Android Chrome実機での調整
 - [ ] 完成版・itch.io上での実プレイ確認・提出
