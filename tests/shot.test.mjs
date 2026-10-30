@@ -89,3 +89,34 @@ test('invisible samples never add film density even with an in-view centre', asy
   assert.equal(film.energy, 0);
   assert.equal(film.quality, 0);
 });
+
+test('fatal exposure obeys distinct safe, warning and lethal thresholds', async () => {
+  const {assessFatalExposure} = await import('../src/shot.ts');
+  const safe = assessFatalExposure(timed(1.10), 0, 1.10, center);
+  const warning = assessFatalExposure(timed(1.80), 0, 1.80, center);
+  const dead = assessFatalExposure(timed(2.15), 0, 2.15, center);
+  assert.equal(safe.cause, null);
+  assert.equal(warning.warning, true);
+  assert.equal(dead.cause, 'OVEREXPOSED');
+});
+
+test('approaching spirit kills at contact but not while still safely distant', async () => {
+  const {assessFatalExposure} = await import('../src/shot.ts');
+  const empty = () => ({x: 3, y: 3, inView: false});
+  assert.equal(assessFatalExposure(timed(.75), 2, .75, empty).cause, null);
+  assert.equal(assessFatalExposure(timed(1.60), 2, 1.60, empty).cause, null);
+  assert.equal(assessFatalExposure(timed(1.65), 2, 1.65, empty).cause, 'TOO CLOSE');
+});
+
+test('prolonged shutter hold always kills even outside the frame', async () => {
+  const {assessFatalExposure} = await import('../src/shot.ts');
+  const empty = () => ({x: 3, y: 3, inView: false});
+  assert.equal(assessFatalExposure(timed(2.20), 0, 2.20, empty).cause, null);
+  assert.equal(assessFatalExposure(timed(2.40), 0, 2.40, empty).cause, 'OVEREXPOSED');
+});
+
+test('third act prioritizes dangerous proximity over optical bleaching', async () => {
+  const {assessFatalExposure} = await import('../src/shot.ts');
+  assert.equal(assessFatalExposure(timed(1.35), 2, 1.35, center).cause, null);
+  assert.equal(assessFatalExposure(timed(1.65), 2, 1.65, center).cause, 'TOO CLOSE');
+});

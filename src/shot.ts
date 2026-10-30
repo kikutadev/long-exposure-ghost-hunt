@@ -58,3 +58,22 @@ export function evaluateShot(samples: readonly GhostSample[], act: number, expos
   }
   return { quality, success, label, description };
 }
+
+export type DeathCause = 'OVEREXPOSED' | 'TOO CLOSE';
+
+/** Fatal danger is derived from the same film response that draws the photograph. */
+export function assessFatalExposure(
+  samples: readonly GhostSample[],
+  act: number,
+  seconds: number,
+  project: (sample: GhostSample) => Projection
+): { cause: DeathCause | null; warning: boolean } {
+  const film = formExposure(samples, act, seconds, project);
+  const tooClose = act === 2 && seconds >= 1.65;
+  const openTooLong = act !== 2 && seconds >= 2.4;
+  const fatalLight = act !== 2 && film.visibleTime >= .1 && film.bleach >= .75;
+  return {
+    cause: tooClose ? 'TOO CLOSE' : (openTooLong || fatalLight) ? 'OVEREXPOSED' : null,
+    warning: (act === 2 && seconds >= 1.07) || (act !== 2 && seconds >= 1.75) || film.bleach >= .35,
+  };
+}

@@ -65,5 +65,10 @@ export class Sound {
   close() { this.noise(.065, .11); this.tone(190, .08, .13, 'triangle', 47); this.tone(1320, .035, .065, 'square', 520); }
   detected() { this.tone(430, .24, .036, 'sine', 650); this.tone(880, .24, .024, 'sine', 1000); }
   miss() { this.tone(162, .24, .035, 'triangle', 94); }
+  death() {
+    this.noise(.68, .18);
+    this.tone(70, .83, .15, 'sawtooth', 24);
+    this.tone(830, .14, .055, 'square', 75);
+  }
   cue() { this.tone(960, .08, .011, 'sine', 530); }
 }

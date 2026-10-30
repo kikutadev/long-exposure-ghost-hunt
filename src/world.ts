@@ -228,8 +228,8 @@ export class GhostWorld {
       const pos = Math.min(1, phase / 1.05);
       return { t, x: -2.4 + pos * 4.8, y: 1.50 + .03 * Math.sin(t * 18), z: -5.4, visible: active, size: .92 };
     }
-    const approach = fixed(exposureAge / 1.65, 0, 1);
-    return { t, x: .1 + .12 * Math.sin(t * 1.7), y: 1.6 + .06 * Math.sin(t * 1.4), z: -6.4 + approach * 5.1, visible: true, size: 1.08 };
+    const approach = Math.pow(fixed(exposureAge / 1.65, 0, 1), 2.2);
+    return { t, x: .1 + .12 * Math.sin(t * 1.7), y: 1.6 + .06 * Math.sin(t * 1.4), z: -6.4 + approach * 10.9, visible: true, size: 1.08 };
   }
 
   project(sample: GhostSample) {

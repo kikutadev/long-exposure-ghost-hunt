@@ -44,6 +44,11 @@ export const GAME_MARKUP = `
     <section class="screen end-screen hidden" id="end">
       <div class="end-head">ARCHIVE COMPLETE <span>03 / 03</span></div><div class="end-title">THREE<br/>EXPOSURES.</div><div class="end-description">In every photograph, someone is looking back.</div><div id="end-photos" class="end-photos"></div><p class="end-last">YOUR CAMERA FIRES ONCE MORE.<br/>BUT YOUR FINGER IS NOT ON THE SHUTTER.</p><button id="replay" class="primary-button">REPLAY <span>↗</span></button>
     </section>
+    <section class="screen death-screen hidden" id="death" aria-live="assertive">
+      <div class="death-top">SIGNAL LOST <span>FILE TERMINATED</span></div>
+      <div class="death-vision"><img id="death-ghost" src="./assets/ghost-near.png" alt="A ghost overwhelms the camera"/><div class="death-fault"></div></div>
+      <div class="death-bottom"><div class="death-kicker">YOU DID NOT CLOSE IT IN TIME.</div><h2>YOU<br/>ARE DEAD.</h2><p id="death-reason">THE PRESENCE REACHED YOU.</p><button id="death-restart" class="primary-button">RESTART <span>↗</span></button><p class="death-foot">YOUR PHOTOGRAPHS ARE LOST.</p></div>
+    </section>
     <div id="rotate" class="rotate-screen"><div>▣</div><h2>ROTATE YOUR DEVICE</h2><p>Best experienced in portrait mode.</p></div>
     <div id="loading"><div class="load-mark">◌</div>LOADING FILM...</div>
   </main>
