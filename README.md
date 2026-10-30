@@ -52,7 +52,7 @@ pnpm build
 
 ## Blenderの小道具
 
-ノートと壁時計はBlender 4.5で制作。現在はGUIを使わず `art/build-notebook.py` をbpyヘッドレスで実行する。編集元は art/classroom-dress.blend、ゲーム用は public/assets/classroom-dress.glb（約211KB）。スクリーンショットは art/preview-*.png。モデルはThree.jsで描画する。Rive CLIのシャッター試作は art/rive-shutter に置くが、現行サイトは引き続きSVGシャッター。詳細は art/README.md。
+ノートと壁時計はBlender 4.5で制作。GUIを使わずart/build-motion.pyをbpyヘッドレスで実行し、紙と椅子の名前付きアニメーションをGLBへ書き出す。編集元は art/classroom-dress.blend、ゲーム用は public/assets/classroom-dress.glb（約211KB）。スクリーンショットは art/preview-*.png。モデルはThree.jsで描画する。Rive CLIのシャッター試作は art/rive-shutter に置くが、現行サイトは引き続きSVGシャッター。詳細は art/README.md。
 
 ## 撮影リスクとゲームオーバー
 

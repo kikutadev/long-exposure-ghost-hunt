@@ -2,7 +2,7 @@
 
 **用途**：スマホ縦画面向けThree.jsゴーストハント。幽霊の行動を示す手掛かりを3D化する。
 
-**現在の制作方法**：Blender 4.5をヘッドレスで起動し、bpyでシーンを直接編集・レンダリング・GLB書き出しする。GUIは使用しない。再現可能なビルドは `art/build-notebook.py`。旧MCP作業の記述は履歴であり、現行の作業指示ではない。
+**現在の制作方法**：Blender 4.5をヘッドレスで起動し、bpyでシーンを直接編集・レンダリング・GLB書き出しする。GUIは使用しない。基本造形はart/build-notebook.py、現行のアニメーション生成はart/build-motion.py。旧MCP作業の記述は履歴であり、現行の作業指示ではない。
 
 **Production Brief**
 - 種別：小道具（hero clue）、ゲーム用、暗い廃校のスタイライズドホラー。
@@ -47,3 +47,7 @@
 
 - `art/rive-shutter/scene.rml` に6枚のベクター羽根の開閉アニメーションとステートマシンの初期試作を作成。`rive art/rive-shutter --verify` は0 errors / 0 warnings。開閉プレビューは `art/rive-shutter/preview-open.png` と `preview-closed.png`。
 - **現段階はCLI内の試作であり、ゲームへのRive実装完了ではない。** 未署名のローカル `.riv` はWebランタイムにそのまま組み込まない。Riveアカウントで署名したビルドを得られ、指の押下・解放・中断と正しく同期することを実測してから現行SVG羽根と切り替える。
+
+
+## 2026-10-31 bpyモーション
+Blender --background art/classroom-dress.blend --threads 3 --python art/build-motion.py で再生成する。紙のめくれ AN_Notebook_Flip、椅子の傾き・滑り・反動 AN_Chair_Scrape をNLAで書き出す。Blender実レンダリングは preview-motion-rest.png と preview-motion-open.png。GLBに2本を格納し再実行で重複しない。Three.jsでAnimationMixerから再生する。Riveシャッター移行はしない。

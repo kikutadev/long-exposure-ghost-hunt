@@ -36,7 +36,9 @@ export class GhostWorld {
   private shiftingChairs: { mesh: THREE.Group; x: number; z: number }[] = [];
   private oldClock: THREE.Object3D[] = [];
   private turningPage: THREE.Object3D | null = null;
-  private pageStartingRotation = 0;
+  private pageMixer: THREE.AnimationMixer | null = null;
+  private pageClipDuration = 0;
+  private animatedChairs: { x: number; z: number; mixer: THREE.AnimationMixer; duration: number }[] = [];
   private photoWasExposing = false;
   private curtain: THREE.Mesh;
   private atmosphere: ReturnType<typeof decorateClassroom>;
@@ -76,7 +78,33 @@ export class GhostWorld {
       this.book.visible = false;
       this.oldClock.forEach(node => { node.visible = false; });
       this.turningPage = dress.scene.getObjectByName('BOOK_Page_Turning') ?? null;
-      this.pageStartingRotation = this.turningPage?.rotation.z ?? 0;
+      const flip = dress.animations.find(clip => clip.name === 'AN_Notebook_Flip');
+      if (flip && this.turningPage) {
+        this.pageMixer = new THREE.AnimationMixer(dress.scene);
+        this.pageMixer.clipAction(flip).play();
+        this.pageClipDuration = flip.duration;
+      }
+      const template = dress.scene.getObjectByName('HAUNT_Chair');
+      const scrape = dress.animations.find(clip => clip.name === 'AN_Chair_Scrape');
+      if (template && scrape) {
+        // Keep the Blender node as a clone source; selected Three.js fallback chairs
+        // become invisible only after the animated replacements exist.
+        template.visible = false;
+        for (const chair of this.shiftingChairs) {
+          const model = template.clone(true);
+          // Keep world placement on an unanimated parent. The Blender clip's
+          // root-motion position belongs to the child and must not overwrite it.
+          const anchor = new THREE.Group();
+          anchor.position.set(chair.x, 0, chair.z);
+          model.visible = true;
+          anchor.add(model);
+          this.scene.add(anchor);
+          const mixer = new THREE.AnimationMixer(model);
+          mixer.clipAction(scrape).play();
+          this.animatedChairs.push({ x: chair.x, z: chair.z, mixer, duration: scrape.duration });
+          chair.mesh.visible = false;
+        }
+      }
     } catch (error) {
       console.warn('Blender props unavailable, using basic props', error);
     }
@@ -153,7 +181,7 @@ export class GhostWorld {
       box(chair, [1.1, .48, .05], [x, 1.18, z + .85], 0x635543);
       box(chair, [.10, .55, .08], [x - .5, .59, z + .75], 0x474438);
       box(chair, [.10, .55, .08], [x + .5, .59, z + .75], 0x474438);
-      if (z < -2) this.shiftingChairs.push({ mesh: chair, x, z });
+      this.shiftingChairs.push({ mesh: chair, x, z });
     }
     box(sc, [1.0, .045, .6], [2.8, .92, -5.6], 0x493e31);
     box(sc, [1.3, 1.7, .1], [-4.6, 1.7, -6.8], 0x7b6955);
@@ -237,39 +265,41 @@ export class GhostWorld {
     const glitch = (Math.sin(time * 5.2) + Math.sin(time * 12.7) * .4) * .09;
     this.flicker.intensity = (this.act === 2 ? 2.2 : 5) + glitch;
     this.frontFluorescent.emissiveIntensity = (this.act === 2 ? .24 : .68) + Math.max(0, glitch);
-    // Environmental clues are physical consequences, not a map of the ghost.
-    const pageTime = ((time + .2) % 4.1 + 4.1) % 4.1;
-    const ease = (v: number) => {
-      const x = fixed(v, 0, 1);
-      return x * x * (3 - 2 * x);
-    };
-    const rise = ease((pageTime - .45) / .25);
-    const fall = 1 - ease((pageTime - 1.00) / .32);
-    const pageTurn = this.act === 0 ? rise * fall : 0;
-    this.book.rotation.z = pageTurn * .045;
-    if (this.turningPage) {
-      // Blender-built page's origin is the notebook spine, not the sheet center.
-      this.turningPage.rotation.z = this.pageStartingRotation + pageTurn * 1.15;
-      this.turningPage.visible = true;
+    // bpy-authored motion clips. Three.js only chooses WHEN a physical event happens.
+    // Local time is stable across replays and is coupled to the ghost's crossing.
+    const pageCycle = ((time + .2) % 4.1 + 4.1) % 4.1;
+    if (this.pageMixer) {
+      this.pageMixer.setTime(this.act === 0 ? Math.min(pageCycle, this.pageClipDuration) : 0);
+    } else {
+      // Fallback if the glTF clip is absent: keep the experience playable.
+      this.book.rotation.z = this.act === 0 ? Math.sin(time * 2.3) * .04 : 0;
     }
-    this.shiftingChairs.forEach(({ mesh, x, z }) => {
-      let jerk = 0;
-      if (this.act === 0 && x === -2.6 && z === -3.25) {
-        jerk = Math.pow(Math.max(0, Math.sin(time * 1.7)), 9) * .22;
-      } else if (this.act === 1 && z === -3.25) {
-        const cue = ((time - (x + 2.6) * .115) % 2.6 + 2.6) % 2.6;
-        jerk = cue < .34 ? .34 * Math.sin(Math.PI * cue / .34) : 0;
-      } else if (this.act === 2 && x === 0) {
-        const phase = ((time - (z + 5.7) * .26) % 3.6 + 3.6) % 3.6;
-        jerk = phase < .31 ? .14 * Math.sin(Math.PI * phase / .31) : 0;
+    if (this.animatedChairs.length) {
+      for (const chair of this.animatedChairs) {
+        let elapsed = -1;
+        if (this.act === 0 && chair.x === -2.6 && chair.z === -3.25) {
+          elapsed = pageCycle - 1.04;
+        } else if (this.act === 1 && chair.z === -3.25) {
+          const pass = ((time + .15) % 2.6 + 2.6) % 2.6;
+          elapsed = pass - ((chair.x + 2.6) / 5.2) * 1.05;
+        } else if (this.act === 2 && chair.x === 0) {
+          const cueAge = exposing ? exposureAge : (((time + .2) % 4.1 + 4.1) % 4.1);
+          const cueOffset = chair.z === -5.7 ? .25 : chair.z === -3.25 ? .73 : 1.16;
+          elapsed = cueAge - cueOffset;
+        }
+        chair.mixer.setTime(Math.max(0, Math.min(chair.duration, elapsed)));
       }
-      // The chair shifts sideways in the first two acts; in the last act,
-      // chairs scrape toward the camera as the unseen presence approaches.
-      mesh.position.x = this.act < 2 ? jerk : 0;
-      mesh.position.z = this.act === 2 ? jerk : 0;
-      const back = mesh.children[0];
-      if (back) back.rotation.x = jerk * .35;
-    });
+    } else {
+      // Static fallback for older/missing GLBs. It must not compete with the clips.
+      this.shiftingChairs.forEach(({ mesh, x, z }) => {
+        const cue = ((time + .15) % 2.6 + 2.6) % 2.6;
+        const shift = this.act === 0 && x === -2.6 && z === -3.25
+          ? Math.max(0, Math.sin(time * 2)) * .15
+          : this.act === 1 && z === -3.25 && cue >= (x + 2.6) / 5.2
+            ? .12 : 0;
+        mesh.position.x = shift;
+      });
+    }
     const pos = this.positionAt(time, exposureAge);
     this.atmosphere.update(time, this.act, exposing, new THREE.Vector3(pos.x, pos.y, pos.z), exposureAge);
     const curtainCue = ((time + .15) % 2.6 + 2.6) % 2.6;
