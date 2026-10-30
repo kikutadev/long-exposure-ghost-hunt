@@ -1,0 +1,42 @@
+/* Tactile camera + film chemistry. The photo itself is captured before the effects. */
+#shutter{--charge:0turn}
+#shutter::before{content:"";position:absolute;inset:-7px;border-radius:50%;
+  background:conic-gradient(from -90deg,#a2ffe9 0turn var(--charge),rgba(148,184,175,.12) var(--charge) 1turn);
+  -webkit-mask:radial-gradient(transparent 0 62%,black 66% 100%);
+  mask:radial-gradient(transparent 0 62%,black 66% 100%);
+  filter:drop-shadow(0 0 7px rgba(106,241,220,.48));pointer-events:none;transition:background .09s}
+#shutter.pressed .shutter-core{transform:translateY(2px);box-shadow:inset 0 3px 9px rgba(0,0,0,.46);transition:transform .06s}
+#shutter .shutter-ring{transition:transform .07s cubic-bezier(.2,.7,.4,1),box-shadow .07s}
+#game.shutter-impact #world{animation:camera-kick .15s cubic-bezier(.1,.5,.2,1)}
+#game.shutter-impact .vignette{animation:shot-vignette .18s}
+@keyframes camera-kick{0%{transform:translateY(0) scale(1)}22%{transform:translateY(3px) scale(1.008)}60%{transform:translateY(-2px) scale(1.006)}100%{transform:none}}
+@keyframes shot-vignette{0%{opacity:1}18%{opacity:.45}50%{opacity:.95}100%{opacity:1}}
+.signal-display{position:absolute;bottom:263px;left:31px;right:31px;color:#9fc4ba;
+  font-size:9px;letter-spacing:.13em;display:flex;align-items:center;gap:9px;
+  opacity:0;transform:translateY(4px);transition:opacity .12s,transform .12s;text-shadow:0 1px 6px #000}
+#game[data-phase="opening"] .signal-display,#game[data-phase="exposing"] .signal-display{opacity:1;transform:translateY(0)}
+.signal-icon{font-size:16px;line-height:1;color:#90d6ca;animation:signal-rotate 4s linear infinite}
+.signal-track{height:3px;flex:1;min-width:42px;max-width:95px;background:rgba(114,157,148,.3);margin-left:auto}
+.signal-track>div{width:0%;height:100%;background:#69b8ac;box-shadow:0 0 11px #50cbbb;transition:width .09s}
+.signal-display.locked{color:#cbffe9}
+.signal-display.locked .signal-icon{color:#bbffdd}
+.signal-display.locked .signal-track>div{background:#ceffe0;box-shadow:0 0 11px #cbffe9}
+.signal-display.danger{color:#ffb0a2}
+.signal-display.danger .signal-icon{color:#f58f79}
+.signal-display.danger .signal-track>div{background:#d75c58;box-shadow:0 0 12px #f1544d}
+@keyframes signal-rotate{to{transform:rotate(360deg)}}
+#game[data-phase="exposing"] .reticle{opacity:.24}
+#game[data-phase="exposing"] .reticle-dot{background:#adf0cf;box-shadow:0 0 22px #9dffe4}
+#game[data-phase="exposing"] .hud-act{color:#d4f7e9}
+.result-screen:not(.hidden) .print-frame{animation:print-emerge .5s cubic-bezier(.16,.85,.25,1) both;transform-origin:center 55%}
+.result-screen:not(.hidden) .print-photo img{animation:chemical-develop .78s ease-out both}
+.result-screen:not(.hidden) .result-bottom{animation:result-enter .48s .14s ease-out both}
+@keyframes print-emerge{0%{opacity:0;transform:translateY(16px) scale(.95) rotate(2deg)}100%{opacity:1;transform:rotate(-.9deg)}}
+@keyframes chemical-develop{0%{filter:brightness(.02) contrast(2) sepia(.7);opacity:.1}30%{filter:brightness(.25) contrast(1.3) sepia(.4);opacity:.56}100%{filter:contrast(1.14) saturate(.76);opacity:1}}
+@keyframes result-enter{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:translateY(0)}}
+.end-screen:not(.hidden) .end-photos img{animation:archive-photo .45s ease-out backwards}
+.end-screen:not(.hidden) .end-photos img:nth-child(2){animation-delay:.15s}
+.end-screen:not(.hidden) .end-photos img:nth-child(3){animation-delay:.3s}
+@keyframes archive-photo{0%{opacity:0;transform:translateY(26px) rotate(0) scale(.88)}100%{opacity:1}}
+@media(max-height:700px){.signal-display{bottom:223px}}
+@media(prefers-reduced-motion:reduce){.signal-icon,#game.shutter-impact #world,#game.shutter-impact .vignette,.result-screen:not(.hidden) .print-frame,.result-screen:not(.hidden) .print-photo img,.result-screen:not(.hidden) .result-bottom,.end-screen:not(.hidden) .end-photos img{animation:none!important}}

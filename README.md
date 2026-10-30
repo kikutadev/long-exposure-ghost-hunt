@@ -29,6 +29,14 @@ SLAPJAM #2（テーマ **Speed**）向け、スマホ縦画面の短編3D心霊�
 - AIツールを使い、提出ページで実際に使用したツールを申告する。締切後にビルドは更新できない。
 - 公式：https://itch.io/jam/slapjam-ai-2 / https://slapjam.ai/
 
+## GitHub Pages 試遊版
+
+公開先: https://kikutadev.github.io/long-exposure-ghost-hunt/
+
+ソース: https://github.com/kikutadev/long-exposure-ghost-hunt
+
+実行ファイルを gh-pages ブランチ直下に公開する。GitHub Actionsを使用しない。公開更新は、originを設定したこのリポジトリで scripts/publish-pages.sh を実行する。
+
 ## 起動・提出用ビルド
 
 macOSの当該フォルダ内で実行する。
@@ -50,5 +58,6 @@ pnpm build
 - [x] Three.jsで3体を配置。撮影画面・残像・写真表示をChromeスマホ画面サイズで目視確認
 - [x] 3幕を通して撮影・評価・アルバム・エンディング・リプレイの自動操作を確認
 - [x] 長押し解除・画面外解放・キャンセル・回転・連続撮影をChromeで確認
+- [x] 教室の質感、幽霊の発見の手がかり、露光中の視覚信号、シャッター反動、現像演出、環境音を改良
 - [ ] iPhone Safari / Android Chrome実機での調整
 - [ ] 完成版・itch.io上での実プレイ確認・提出

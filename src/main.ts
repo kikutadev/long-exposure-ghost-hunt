@@ -1,5 +1,6 @@
 import { GhostWorld, type GhostSample } from './world';
 import './style.css';
+import './polish.css';
 
 type Phase = 'intro' | 'look' | 'opening' | 'exposing' | 'closing' | 'develop' | 'result' | 'album' | 'end';
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -31,6 +32,7 @@ app.innerHTML = `
       </div>
       <div class="reticle" id="reticle"><span></span><span></span><span></span><span></span><div class="reticle-dot"></div></div>
       <div class="clue" id="clue"><span class="clue-line"></span><span id="clue-label">SOMETHING MOVED...</span></div>
+      <div class="signal-display" id="signal-display"><span class="signal-icon">◈</span><span id="signal-label">SPECTRAL SIGNAL</span><div class="signal-track"><div id="signal-fill"></div></div></div>
       <div class="capture-controls">
         <div class="controls-info"><span class="mono-label">EXPOSURE</span><strong id="exposure-value">0.00<span>s</span></strong></div>
         <button id="shutter" type="button" aria-label="Hold to expose and release to capture">
@@ -82,7 +84,6 @@ const bladeElements = Array.from({ length: 6 }, (_, i) => {
   return path;
 });
 let aperture = 1;
-let requestedAperture = 1;
 function drawIris(open: number) {
   aperture = clamp(open, 0, 1);
   irisOverlay.classList.toggle('active', aperture < .999);
@@ -109,7 +110,6 @@ let lastSample = 0;
 let exposureSeconds = 0;
 let samples: GhostSample[] = [];
 let worldTime = 0;
-let nowSeconds = 0;
 let irisStart = 0;
 let irisDirection: 'open'|'close'|null = null;
 let phaseStarted = 0;
@@ -117,18 +117,35 @@ let pointerOwner: number | null = null;
 let lookPointer: number | null = null;
 let lastLookX = 0, lastLookY = 0;
 let lastTime = 0;
-let pausedAt = 0;
 let albumFrom: Phase = 'look';
 let soundOn = true;
+let lastDisturbance = -5;
 
 class Sound {
   private ctx: AudioContext | null = null;
+  private hasAmbience = false;
   start() {
     if (!soundOn) return;
     try {
       this.ctx ??= new AudioContext();
       if (this.ctx.state === 'suspended') void this.ctx.resume();
+      if (!this.hasAmbience) {
+        this.hasAmbience = true;
+        const mix = this.ctx.createGain(); mix.gain.value = .012; mix.connect(this.ctx.destination);
+        for (const [freq, volume] of [[54,.62],[107,.19],[32,.26]]) {
+          const osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
+          osc.type = freq === 32 ? 'triangle' : 'sine';
+          osc.frequency.value = freq; gain.gain.value = volume;
+          osc.connect(gain); gain.connect(mix); osc.start();
+        }
+      }
     } catch { this.ctx = null; }
+  }
+  pause() { if (this.ctx) void this.ctx.suspend(); }
+  disturbance(act: number) {
+    if (act === 0) { this.noise(.19,.008); this.tone(132,.18,.008,'triangle',107); }
+    else if (act === 1) { this.tone(900,.07,.014,'sine',240); this.noise(.12,.011); }
+    else { this.tone(53,.46,.025,'triangle',38); this.noise(.18,.008); }
   }
   tone(hz: number, duration: number, volume: number, type: OscillatorType = 'sine', endHz?: number) {
     if (!soundOn || !this.ctx) return;
@@ -174,6 +191,7 @@ function syncHUD() {
   ][act];
   $('#exposure-value').innerHTML = `${exposureSeconds.toFixed(2)}<span>s</span>`;
   $('#sound').textContent = soundOn ? '♫' : '♪̸';
+  shutter.style.setProperty('--charge', '0turn');
 }
 function startGame() {
   sound.start();
@@ -221,6 +239,9 @@ function prepareLook() {
   irisDirection = null;
   hint.textContent = act === 0 ? 'HOLD TO EXPOSE' : act === 1 ? 'FOLLOW THE SIGNAL' : 'DON\'T LET IT REACH YOU';
   hint.classList.remove('gone');
+  $('#signal-label').textContent = 'SPECTRAL SIGNAL';
+  $('#signal-fill').style.width = '0%';
+  $('#signal-display').classList.remove('locked', 'danger');
   syncHUD();
 }
 
@@ -280,6 +301,9 @@ function endExposure(forced = false) {
   if (history.length > 5) history.pop();
   sound.close();
   shutter.classList.remove('pressed');
+  game.classList.remove('shutter-impact');
+  void game.offsetHeight;
+  game.classList.add('shutter-impact');
   irisDirection = 'close'; irisStart = t;
   setPhase('closing');
   hint.classList.add('gone');
@@ -306,6 +330,8 @@ function beginExposure(pointer: number) {
   pointerOwner = pointer;
   sound.start(); sound.open();
   shutter.classList.add('pressed');
+  $('#signal-display').classList.remove('locked','danger');
+  $('#signal-label').textContent = 'SCANNING...';
   const now = performance.now() / 1000;
   exposureStart = now; lastSample = now;
   samples.length = 0;
@@ -354,8 +380,8 @@ function cancelInput() {
     prepareLook();
   }
 }
-window.addEventListener('blur', () => { cancelInput(); pausedAt = performance.now() / 1000; });
-document.addEventListener('visibilitychange', () => { if (document.hidden) { cancelInput(); pausedAt = performance.now() / 1000; } });
+window.addEventListener('blur', () => { cancelInput(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { cancelInput(); } });
 window.addEventListener('orientationchange', cancelInput);
 document.addEventListener('contextmenu', event => {
   if ((event.target as Element).closest('#device')) event.preventDefault();
@@ -365,7 +391,7 @@ $('#result-action').addEventListener('click', advance);
 $('#replay').addEventListener('click', () => {
   endPanel.classList.add('hidden'); startGame();
 });
-$('#sound').addEventListener('click', () => { soundOn = !soundOn; sound.start(); syncHUD(); });
+$('#sound').addEventListener('click', () => { soundOn = !soundOn; if (soundOn) sound.start(); else sound.pause(); syncHUD(); });
 $('#album-button').addEventListener('click', () => {
   if (phase !== 'look' || photos.length === 0) return;
   albumFrom = phase; setPhase('album'); $('#hud').classList.remove('ready');
@@ -401,13 +427,25 @@ function frame(tMs: number) {
   if (phase !== 'intro' && phase !== 'result' && phase !== 'album' && phase !== 'end') {
     worldTime += dt;
   }
-  world.tick(dt, worldTime, exposing);
+  world.tick(dt, worldTime, exposing, exposureSeconds);
+  if (phase === 'look' && worldTime - lastDisturbance >= [6.5,2.6,4.6][act]) {
+    lastDisturbance = worldTime;
+    sound.disturbance(act);
+  }
 
   if (exposing) {
     exposureSeconds = clamp(t - exposureStart, 0, 2.4);
     collectSamples(t);
     world.showExposure(samples, exposureSeconds);
     $('#exposure-value').innerHTML = `${exposureSeconds.toFixed(2)}<span>s</span>`;
+    const live = shotState();
+    const signal = $('#signal-display');
+    const dangerous = (act === 2 && exposureSeconds > 1.15) || (act !== 2 && exposureSeconds > 1.85);
+    signal.classList.toggle('locked', live.quality >= 45 && !dangerous);
+    signal.classList.toggle('danger', dangerous);
+    $('#signal-label').textContent = dangerous ? 'CLOSE THE SHUTTER!' : live.quality >= 75 ? 'IMAGE SHARP · RELEASE!' : live.quality >= 45 ? 'SUBJECT VISIBLE · RELEASE' : live.label === 'EMPTY FRAME' ? 'SEARCHING FOR PRESENCE' : 'FORMING IMAGE...';
+    $('#signal-fill').style.width = String(clamp(live.quality, 0, 100)) + '%';
+    shutter.style.setProperty('--charge', String(clamp(live.quality / 100, 0, 1)) + 'turn');
     if (phase === 'opening' && t - irisStart > .12) setPhase('exposing');
     if (exposureSeconds >= (act === 2 ? 1.65 : 2.4)) endExposure(true);
   }

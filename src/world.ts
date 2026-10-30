@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { decorateClassroom } from './atmosphere';
 
 export type GhostSample = { t: number; x: number; y: number; z: number; visible: boolean; size: number };
 const fixed = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -37,6 +38,7 @@ export class GhostWorld {
   private book: THREE.Mesh;
   private photoWasExposing = false;
   private curtain: THREE.Mesh;
+  private atmosphere: ReturnType<typeof decorateClassroom>;
   private viewportW = 1;
   private viewportH = 1;
 
@@ -51,6 +53,7 @@ export class GhostWorld {
     this.camera.position.set(0, 1.65, 5.7);
     this.pointAtYaw();
     this.buildRoom();
+    this.atmosphere = decorateClassroom(this.scene);
 
     const count = 180, values = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
@@ -217,14 +220,15 @@ export class GhostWorld {
     return { x: ndc.x, y: ndc.y, inView: sample.visible && ndc.z >= -1 && ndc.z <= 1 && Math.abs(ndc.x) < 1.12 && Math.abs(ndc.y) < 1.2 };
   }
 
-  tick(dt: number, time: number, exposing: boolean) {
+  tick(dt: number, time: number, exposing: boolean, exposureAge = 0) {
     this.clock = time;
     this.dust.rotation.y += dt * .002;
     const glitch = (Math.sin(time * 5.2) + Math.sin(time * 12.7) * .4) * .09;
     this.flicker.intensity = (this.act === 2 ? 3 : 9) + glitch;
     this.frontFluorescent.emissiveIntensity = (this.act === 2 ? .36 : 1.2) + Math.max(0, glitch);
     this.book.rotation.z = .02 * Math.sin(time * 4.5) + (this.act === 0 ? .07 * Math.sin(time * 13) : 0);
-    const pos = this.positionAt(time);
+    const pos = this.positionAt(time, exposureAge);
+    this.atmosphere.update(time, this.act, exposing, new THREE.Vector3(pos.x, pos.y, pos.z), exposureAge);
     this.hintLight.position.set(pos.x, pos.y, pos.z);
     const pulse = this.act === 1 ? .65 + Math.abs(Math.sin(time * 8)) * 2.3 : this.act === 2 ? .65 + Math.sin(time * 2.5) * .35 : .65 + Math.sin(time * 3) * .3;
     this.hintLight.intensity = exposing ? .5 : pulse;
