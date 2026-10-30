@@ -2,6 +2,7 @@ export class Sound {
   private ctx: AudioContext | null = null;
   private hasAmbience = false;
   private enabled = true;
+  private lastFilmTick = -1;
   get isEnabled() { return this.enabled; }
   toggle() { this.enabled = !this.enabled; if (this.enabled) this.start(); else this.pause(); }
   start() {
@@ -52,7 +53,15 @@ export class Sound {
     src.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
     src.start();
   }
-  open() { this.tone(245, .11, .025, 'sawtooth', 410); this.noise(.08, .026); }
+  expose(seconds: number, act: number) {
+    // Mechanical transport / approaching pressure, not a correct-time chime.
+    const tick = Math.floor(seconds * (act === 2 ? 5 + seconds * 3 : 7));
+    if (tick === this.lastFilmTick) return;
+    this.lastFilmTick = tick;
+    this.noise(.025, .003 + Math.min(seconds, 2) * .002);
+    if (act === 2) this.tone(48 + seconds * 12, .10, .008, 'triangle', 40);
+  }
+  open() { this.lastFilmTick = -1; this.tone(245, .11, .025, 'sawtooth', 410); this.noise(.08, .026); }
   close() { this.noise(.065, .11); this.tone(190, .08, .13, 'triangle', 47); this.tone(1320, .035, .065, 'square', 520); }
   detected() { this.tone(430, .24, .036, 'sine', 650); this.tone(880, .24, .024, 'sine', 1000); }
   miss() { this.tone(162, .24, .035, 'triangle', 94); }

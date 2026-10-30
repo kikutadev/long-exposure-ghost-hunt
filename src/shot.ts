@@ -1,49 +1,60 @@
 import type { GhostSample } from './world';
-const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+const clamp = (v: number, min = 0, max = 1) => Math.max(min, Math.min(max, v));
 
-export type Projection = { x: number; y: number; inView: boolean };
+// Width/height are the visible subject footprint in NDC, not just its centre.
+export type Projection = { x: number; y: number; inView: boolean; width?: number; height?: number; coverage?: number };
 export type ShotResult = { quality: number; success: boolean; label: string; description: string };
 
-export function evaluateShot(
-  samples: readonly GhostSample[],
-  act: number,
-  exposureSeconds: number,
-  project: (sample: GhostSample) => Projection
-): ShotResult {
-  const level = act;
-  if (!samples.length) return { quality: 0, success: false, label: 'TOO DARK', description: 'Hold a little longer to gather light.' };
-  let energy = 0, blur = 0, framing = 0, seen = 0;
-  let prior: { x: number; y: number } | null = null;
-  const strength = [1.0, 3.4, 1.65][level];
-  for (let i = 0; i < samples.length; i++) {
-    const s = samples[i], p = project(s);
-    if (!p.inView) { prior = null; continue; }
-    seen++;
-    energy += strength / 30;
-    const off = Math.hypot(p.x * .68, p.y * .55);
-    framing += clamp(1.07 - off * .47, .55, 1);
-    if (prior) blur += Math.hypot(p.x - prior.x, p.y - prior.y) * .50;
+/** One film response shared by live sprites, the frozen photo, and scoring.
+ * Samples are interval endpoints; the last interval can be less than 1/30 s. */
+export function formExposure(samples: readonly GhostSample[], act: number, seconds: number, project: (s: GhostSample) => Projection) {
+  let energy = 0, motion = 0, framing = 0, visibleTime = 0;
+  let prior: Projection | null = null;
+  const start = samples.length ? samples[samples.length - 1].t - seconds : 0;
+  let previousTime = start;
+  const weights: number[] = [];
+  for (const s of samples) {
+    const dt = clamp(s.t - previousTime, 0, seconds);
+    previousTime = s.t;
+    const p = project(s);
+    const coverage = p.inView && s.visible ? (p.coverage ?? 1) : 0;
+    // Small, distant subjects gather less light; a full subject still needn't be centred.
+    const area = p.width && p.height ? clamp(p.width * p.height / .12, .15, 1.35) : 1;
+    const weight = dt * coverage * area;
+    weights.push(weight);
+    energy += weight * [1, 3.4, 1.65][act];
+    if (!coverage) { prior = null; continue; }
+    visibleTime += dt;
+    framing += dt * coverage;
+    if (prior) {
+      motion += Math.hypot(p.x - prior.x, p.y - prior.y) * .5;
+      // An approaching face leaves nested silhouettes even without lateral motion.
+      motion += Math.abs((p.height ?? 0) - (prior.height ?? 0)) * .6;
+    }
     prior = p;
   }
-  const c = seen ? framing / seen : 0;
-  const brightness = clamp(energy / .93, 0, 1);
-  const blurFactor = Math.exp(-Math.pow(blur / .80, 1.2));
-  const over = energy < 1.48 ? 1 : clamp(1 - (energy - 1.48) * .46, .35, 1);
-  let quality = Math.round(100 * brightness * blurFactor * c * over);
-  if (level === 2 && exposureSeconds > 1.65) quality = 0;
-  const success = quality >= 45 && seen >= 4;
+  const density = Math.pow(clamp(energy / .95), 2.35);
+  const sharpness = Math.exp(-Math.pow(motion / .65, 1.2));
+  const bleach = clamp((energy - 1.3) / 1.05);
+  const detail = Math.pow(1 - bleach, 1.3);
+  const composition = visibleTime ? framing / visibleTime : 0;
+  return { energy, density, sharpness, bleach, detail, composition, visibleTime, weights,
+    quality: Math.round(100 * density * sharpness * detail * composition) };
+}
+
+export function evaluateShot(samples: readonly GhostSample[], act: number, exposureSeconds: number, project: (sample: GhostSample) => Projection): ShotResult {
+  const film = formExposure(samples, act, exposureSeconds, project);
+  const tooLate = act === 2 && exposureSeconds >= 1.65;
+  const quality = tooLate ? 0 : film.quality;
+  const success = quality >= 45 && film.visibleTime >= .10;
   let label = success ? (quality >= 75 ? 'CRYSTAL CLEAR' : 'GHOST CAPTURED') : 'TOO DARK';
-  let description = success ? (quality >= 75 ? 'A perfect paranormal exposure.' : 'The presence is recorded.') : 'Not enough light. Hold the shutter longer.';
-  if (!success && level === 2 && exposureSeconds >= 1.65) {
-    label = 'TOO LATE'; description = 'It reached the lens before you let go.';
-  } else if (!success && seen < 4) {
-    label = 'EMPTY FRAME'; description = 'Watch for movement before exposing.';
-  } else if (!success && c < .7) {
-    label = 'OUT OF FRAME'; description = 'Point the camera toward the disturbance.';
-  } else if (!success && blurFactor < .55) {
-    label = 'TOO BLURRY'; description = 'A shorter exposure will freeze its motion.';
-  } else if (!success && energy > 1.6) {
-    label = 'OVEREXPOSED'; description = 'Close the shutter before the light floods in.';
+  let description = success ? 'The presence is recorded.' : 'Not enough light. Hold the shutter longer.';
+  if (!success) {
+    if (tooLate) { label = 'TOO LATE'; description = 'It reached the lens before you let go.'; }
+    else if (!film.visibleTime) { label = 'EMPTY FRAME'; description = 'Watch for movement before exposing.'; }
+    else if (film.composition < .65) { label = 'OUT OF FRAME'; description = 'Keep the whole presence inside the viewfinder.'; }
+    else if (film.sharpness < .55) { label = 'TOO BLURRY'; description = 'A shorter exposure will freeze its motion.'; }
+    else if (film.bleach > .3) { label = 'OVEREXPOSED'; description = 'The light erased the detail. Try a shorter exposure.'; }
   }
   return { quality, success, label, description };
 }

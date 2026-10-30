@@ -40,3 +40,52 @@ test('approaching ghost reaches the lens at the deadline', () => {
   assert.equal(result.success, false);
   assert.equal(result.label, 'TOO LATE');
 });
+
+// Interval endpoints (including the final fractional interval) mirror capture.
+const timed = (seconds, hz = 30) => Array.from({length: Math.ceil(seconds * hz)}, (_, i) =>
+  ({ ...sample(i), t: Math.min((i + 1) / hz, seconds) }));
+
+test('QA regression: .42s is weak, 1.10s clear, 2.15s bleached', async () => {
+  const { formExposure } = await import('../src/shot.ts');
+  const films = [.42, 1.10, 2.15].map(t => formExposure(timed(t), 0, t, center));
+  assert.ok(films[0].density < .2);
+  assert.ok(films[1].density > .95 && films[1].bleach === 0);
+  assert.ok(films[2].bleach > .75);
+  assert.deepEqual([.42, 1.10, 2.15].map(t => evaluateShot(timed(t), 0, t, center).success), [false, true, false]);
+});
+
+test('exposure energy uses elapsed time, not sample count', async () => {
+  const { formExposure } = await import('../src/shot.ts');
+  const films = [15, 30, 60, 120].map(hz => formExposure(timed(.42, hz), 0, .42, center));
+  films.forEach(film => assert.ok(Math.abs(film.energy - .42) < 1e-10));
+  assert.equal(new Set(films.map(film => film.quality)).size, 1);
+  assert.ok(formExposure(timed(.005), 0, .005, center).density < .001);
+});
+
+test('partially clipped and distant ghosts lose visible exposure', async () => {
+  const { formExposure } = await import('../src/shot.ts');
+  const full = formExposure(timed(1.1), 0, 1.1, center);
+  const clipped = formExposure(timed(1.1), 0, 1.1, () => ({...center(), coverage: .3}));
+  const distant = formExposure(timed(1.1), 0, 1.1, () => ({...center(), width: .1, height: .1}));
+  assert.ok(clipped.quality < 20 && distant.quality < 20);
+  assert.ok(full.quality >= 75);
+});
+
+test('approach expansion blurs even with a stationary centre', async () => {
+  const { formExposure } = await import('../src/shot.ts');
+  const film = formExposure(timed(.9), 2, .9, s => ({...center(), width: .3, height: .3 + s.t * 1.8}));
+  assert.ok(film.sharpness < .3);
+});
+
+test('fast ghost rewards a brief pass and rejects a long trail', () => {
+  const project = s => ({x: -.25 + s.t * 1.1, y: 0, inView: true});
+  assert.equal(evaluateShot(timed(.35), 1, .35, project).success, true);
+  assert.equal(evaluateShot(timed(1.5), 1, 1.5, project).success, false);
+});
+
+test('invisible samples never add film density even with an in-view centre', async () => {
+  const {formExposure} = await import('../src/shot.ts');
+  const film = formExposure(timed(1).map(s => ({...s,visible:false})), 0, 1, center);
+  assert.equal(film.energy, 0);
+  assert.equal(film.quality, 0);
+});

@@ -16,6 +16,9 @@ const $ = <T extends HTMLElement>(selector: string): T => {
 };
 
 $('#app').innerHTML = GAME_MARKUP;
+// The old score meter is absent from both the visible UI and accessibility tree.
+document.querySelector('.signal-track')?.remove();
+document.querySelector('.signal-icon')?.remove();
 
 const canvas = $<HTMLCanvasElement>('#world');
 const world = new GhostWorld(canvas);
@@ -36,6 +39,10 @@ let shots = 0;
 let currentPhoto = '';
 let currentResult: ShotResult | null = null;
 let exposureStart = 0;
+let exposureWorldStart = 0;
+let irisOpen = 1;
+let irisCloseFrom = 1;
+let endingClick = false;
 let lastSample = 0;
 let exposureSeconds = 0;
 let samples: GhostSample[] = [];
@@ -46,6 +53,7 @@ let phaseStarted = 0;
 let lastTime = 0;
 let albumFrom: Phase = 'look';
 let lastDisturbance = -5;
+let lastFastCue = -1;
 
 
 const sound = new Sound();
@@ -61,8 +69,8 @@ function syncHUD() {
   ][act];
   $('#exposure-value').innerHTML = `${exposureSeconds.toFixed(2)}<span>s</span>`;
   $('#sound').textContent = sound.isEnabled ? '♫' : '♪̸';
-  shutter.style.setProperty('--charge', '0turn');
 }
+
 function startGame() {
   sound.start();
   $('#intro').classList.add('hidden');
@@ -81,7 +89,7 @@ function advance() {
     return;
   }
   if (act === 2) {
-    setPhase('end');
+    setPhase('end'); endingClick = false;
     resultPanel.classList.add('hidden');
     $('#hud').classList.remove('ready');
     const endPhotos = $('#end-photos');
@@ -105,13 +113,11 @@ function prepareLook() {
   resultPanel.classList.add('hidden');
   $('#hud').classList.add('ready');
   shutter.classList.remove('pressed');
-  iris.draw(1);
+  iris.draw(1); irisOpen = 1;
   irisDirection = null;
   hint.textContent = act === 0 ? 'HOLD TO EXPOSE' : act === 1 ? 'FOLLOW THE SIGNAL' : 'DON\'T LET IT REACH YOU';
   hint.classList.remove('gone');
   $('#signal-label').textContent = 'SPECTRAL SIGNAL';
-  $('#signal-fill').style.width = '0%';
-  $('#signal-display').classList.remove('locked', 'danger');
   syncHUD();
 }
 
@@ -121,19 +127,23 @@ function endExposure(forced = false) {
   if (phase !== 'opening' && phase !== 'exposing') return;
   const t = performance.now() / 1000;
   collectSamples(t, true);
-  exposureSeconds = Math.max(0, t - exposureStart);
+  exposureSeconds = clamp(t - exposureStart, 0, act === 2 ? 1.65 : 2.4);
   currentResult = shotState();
-  if (forced) {
-    currentResult = act === 2
-      ? { quality: 0, success: false, label: 'TOO LATE', description: 'The shutter slammed shut. It was too close.' }
-      : { quality: 0, success: false, label: 'OVEREXPOSED', description: 'Too much light. Close the shutter sooner.' };
+  if (forced && act === 2) {
+    currentResult = { quality: 0, success: false, label: 'TOO LATE', description: 'The shutter slammed shut. It was too close.' };
   }
   world.showExposure(samples, exposureSeconds);
-  currentPhoto = world.capture(); // Capture the exact viewed exposure before any closing blades.
-  shots++;
-  history.unshift(currentPhoto);
-  if (history.length > 5) history.pop();
   sound.close();
+  irisCloseFrom = irisOpen;
+  iris.draw(Math.max(0, irisOpen - .06));
+  currentPhoto = world.capture(); // Scene only: the DOM blades never enter the photograph.
+  shots++;
+  if (!currentResult.success) {
+    const thumb = document.createElement('canvas'); thumb.width = 90; thumb.height = 120;
+    thumb.getContext('2d')!.drawImage(canvas, 0, 0, 90, 120);
+    history.unshift(thumb.toDataURL('image/jpeg', .65));
+    if (history.length > 5) history.pop();
+  }
   shutter.classList.remove('pressed');
   game.classList.remove('shutter-impact');
   void game.offsetHeight;
@@ -149,28 +159,27 @@ function endExposure(forced = false) {
 }
 
 function collectSamples(t: number, final = false) {
-  const maxT = Math.min(t, exposureStart + 2.4);
+  const maxT = Math.min(t, exposureStart + (act === 2 ? 1.65 : 2.4));
   while (lastSample + 1 / 30 <= maxT && samples.length < 73) {
     lastSample += 1 / 30;
-    samples.push(world.positionAt(worldTime - (t - lastSample), lastSample - exposureStart));
+    samples.push(world.positionAt(exposureWorldStart + lastSample - exposureStart, lastSample - exposureStart));
   }
   if (final && lastSample < maxT && samples.length < 73) {
     lastSample = maxT;
-    samples.push(world.positionAt(worldTime, maxT - exposureStart));
+    samples.push(world.positionAt(exposureWorldStart + maxT - exposureStart, maxT - exposureStart));
   }
 }
 function beginExposure() {
   if (phase !== 'look') return;
   sound.start(); sound.open();
   shutter.classList.add('pressed');
-  $('#signal-display').classList.remove('locked','danger');
   $('#signal-label').textContent = 'SCANNING...';
   const now = performance.now() / 1000;
-  exposureStart = now; lastSample = now;
+  exposureStart = now; exposureWorldStart = worldTime; lastSample = now;
   samples.length = 0;
   exposureSeconds = 0;
   irisDirection = 'open'; irisStart = now;
-  iris.draw(0);
+  iris.draw(0); irisOpen = 0;
   hint.classList.add('gone');
   setPhase('opening');
 }
@@ -189,9 +198,15 @@ bindCameraInput(canvas, shutter, {
   }
 });
 $('#start-button').addEventListener('click', startGame);
-$('#result-action').addEventListener('click', advance);
+$('#result-action').addEventListener('click', () => { if (phase === 'result') advance(); });
+// A developing tap only reveals this print, never also advances or starts a shot.
+resultPanel.addEventListener('click', event => {
+  if (phase !== 'develop') return;
+  event.preventDefault(); event.stopImmediatePropagation();
+  finishDevelop();
+}, true);
 $('#replay').addEventListener('click', () => {
-  endPanel.classList.add('hidden'); startGame();
+  endPanel.classList.add('hidden'); endPanel.classList.remove('last-click'); startGame();
 });
 $('#sound').addEventListener('click', () => { sound.toggle(); syncHUD(); });
 $('#album-button').addEventListener('click', () => {
@@ -215,8 +230,15 @@ function showResult() {
   $('#result-label').textContent = currentResult?.label ?? 'UNKNOWN';
   $('#result-label').classList.toggle('success', !!currentResult?.success);
   $('#result-description').textContent = currentResult?.description ?? '';
+  let strip = resultPanel.querySelector<HTMLElement>('.failed-prints');
+  if (!strip) { strip = document.createElement('div'); strip.className = 'failed-prints'; $('#result-description').after(strip); }
+  strip.innerHTML = history.map((src, i) => `<img src="${src}" alt="Recent attempt ${i + 1}">`).join('');
   $('#result-action').innerHTML = currentResult?.success ? 'CONTINUE <span>↗</span>' : 'TRY AGAIN <span>↗</span>';
   if (currentResult?.success) sound.detected(); else sound.miss();
+  $<HTMLButtonElement>('#result-action').disabled = false;
+  setPhase('develop');
+}
+function finishDevelop() {
   setPhase('result');
 }
 
@@ -225,12 +247,18 @@ function frame(tMs: number) {
   const t = tMs / 1000;
   const dt = lastTime ? clamp(t - lastTime, 0, .06) : 0;
   lastTime = t;
+  if (document.hidden || matchMedia('(orientation:landscape) and (max-height:540px)').matches) return;
   const exposing = phase === 'opening' || phase === 'exposing';
-  if (phase !== 'intro' && phase !== 'result' && phase !== 'album' && phase !== 'end') {
+  if (phase === 'look' || exposing) {
     worldTime += dt;
   }
-  world.tick(dt, worldTime, exposing, exposureSeconds);
-  if (phase === 'look' && worldTime - lastDisturbance >= [6.5,2.6,4.6][act]) {
+  if (phase === 'look' || exposing) world.tick(dt, worldTime, exposing, exposureSeconds);
+  const fastCue = Math.floor((worldTime + .40) / 2.6);
+  if (phase === 'look' && act === 1 && fastCue !== lastFastCue) {
+    lastFastCue = fastCue;
+    sound.disturbance(act);
+  }
+  if (phase === 'look' && act !== 1 && worldTime - lastDisturbance >= [6.5,2.6,4.6][act]) {
     lastDisturbance = worldTime;
     sound.disturbance(act);
   }
@@ -238,36 +266,35 @@ function frame(tMs: number) {
   if (exposing) {
     exposureSeconds = clamp(t - exposureStart, 0, 2.4);
     collectSamples(t);
-    world.showExposure(samples, exposureSeconds);
+    world.showExposure(samples, Math.max(0, lastSample - exposureStart));
     $('#exposure-value').innerHTML = `${exposureSeconds.toFixed(2)}<span>s</span>`;
-    const live = shotState();
-    const signal = $('#signal-display');
-    const dangerous = (act === 2 && exposureSeconds > 1.15) || (act !== 2 && exposureSeconds > 1.85);
-    signal.classList.toggle('locked', live.quality >= 45 && !dangerous);
-    signal.classList.toggle('danger', dangerous);
-    $('#signal-label').textContent = dangerous ? 'CLOSE THE SHUTTER!' : live.quality >= 75 ? 'IMAGE SHARP · RELEASE!' : live.quality >= 45 ? 'SUBJECT VISIBLE · RELEASE' : live.label === 'EMPTY FRAME' ? 'SEARCHING FOR PRESENCE' : 'FORMING IMAGE...';
-    $('#signal-fill').style.width = String(clamp(live.quality, 0, 100)) + '%';
-    shutter.style.setProperty('--charge', String(clamp(live.quality / 100, 0, 1)) + 'turn');
+    // The image is the exposure meter. No score or release instruction during a shot.
+    $('#signal-label').textContent = 'EXPOSING';
+    sound.expose(exposureSeconds, act);
     if (phase === 'opening' && t - irisStart > .12) setPhase('exposing');
     if (exposureSeconds >= (act === 2 ? 1.65 : 2.4)) endExposure(true);
   }
   if (irisDirection === 'open') {
     const v = clamp((t - irisStart) / .12, 0, 1);
-    iris.draw(1 - Math.pow(1 - v, 2.3));
+    irisOpen = 1 - Math.pow(1 - v, 2.3);
+    iris.draw(irisOpen);
     if (v === 1) irisDirection = null;
   }
   if (irisDirection === 'close') {
-    const v = clamp((t - irisStart) / .09, 0, 1);
-    iris.draw(1 - Math.pow(v, 1.8));
+    const v = clamp((t - irisStart) / .12, 0, 1);
+    irisOpen = irisCloseFrom * Math.pow(1 - v, 2);
+    iris.draw(irisOpen);
     if (v === 1) {
       irisDirection = null;
-      if (phase === 'closing') setPhase('develop');
+      if (phase === 'closing') { showResult(); iris.draw(1); irisOpen = 1; }
     }
   }
-  if (phase === 'develop' && t - phaseStarted > .16) {
-    showResult(); iris.draw(1);
+  if (phase === 'develop' && t - phaseStarted > .62) finishDevelop();
+  if (phase === 'end' && !endingClick && t - phaseStarted > 1.5) {
+    endingClick = true; sound.close();
+    endPanel.classList.add('last-click');
   }
-  world.render();
+  if (phase === 'look' || exposing || phase === 'closing') world.render();
 }
 window.addEventListener('resize', () => world.updateViewport());
 async function boot() {
@@ -276,6 +303,7 @@ async function boot() {
     $('#loading').classList.add('hidden');
     world.setAct(0);
     syncHUD(); iris.draw(1);
+    world.render();
     requestAnimationFrame(frame);
   } catch (error) {
     $('#loading').innerHTML = `CAMERA ERROR<br/><small>${String(error)}</small>`;

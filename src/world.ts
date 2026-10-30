@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { decorateClassroom } from './atmosphere';
+import { formExposure } from './shot';
 
 export type GhostSample = { t: number; x: number; y: number; z: number; visible: boolean; size: number };
 const fixed = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -41,6 +42,7 @@ export class GhostWorld {
   private photoWasExposing = false;
   private curtain: THREE.Mesh;
   private atmosphere: ReturnType<typeof decorateClassroom>;
+  private filmBleach = { value: 0 };
   private viewportW = 1;
   private viewportH = 1;
 
@@ -103,6 +105,12 @@ export class GhostWorld {
     for (let act = 0; act < 3; act++) {
       for (let i = 0; i < 20; i++) {
         const mat = new THREE.SpriteMaterial({ map: this.textures[act], transparent: true, opacity: 0, depthWrite: false, depthTest: false, color: 0xc3f7ff, toneMapped: false });
+        mat.onBeforeCompile = shader => {
+          shader.uniforms.filmBleach = this.filmBleach;
+          shader.fragmentShader = 'uniform float filmBleach;\n' + shader.fragmentShader;
+          shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>',
+            '#include <map_fragment>\n diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), filmBleach);');
+        };
         const sprite = new THREE.Sprite(mat);
         sprite.visible = false;
         sprite.scale.set(1.88, 2.88, 1);
@@ -225,9 +233,17 @@ export class GhostWorld {
   }
 
   project(sample: GhostSample) {
-    const world = new THREE.Vector3(sample.x, sample.y, sample.z);
-    const ndc = world.project(this.camera);
-    return { x: ndc.x, y: ndc.y, inView: sample.visible && ndc.z >= -1 && ndc.z <= 1 && Math.abs(ndc.x) < 1.12 && Math.abs(ndc.y) < 1.2 };
+    this.camera.updateMatrixWorld();
+    const view = new THREE.Vector3(sample.x, sample.y, sample.z).applyMatrix4(this.camera.matrixWorldInverse);
+    const ndc = new THREE.Vector3(sample.x, sample.y, sample.z).project(this.camera);
+    // The PNG's translucent margins occupy about 20% on each side.
+    const height = 2.86 * sample.size * .8 / Math.max(.1, -view.z) / Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
+    const width = height * (1.90 / 2.86) * .75 / this.camera.aspect;
+    const overlapX = Math.max(0, Math.min(1, ndc.x + width / 2) - Math.max(-1, ndc.x - width / 2));
+    const overlapY = Math.max(0, Math.min(1, ndc.y + height / 2) - Math.max(-1, ndc.y - height / 2));
+    const coverage = overlapX * overlapY / (width * height);
+    return { x: ndc.x, y: ndc.y, width, height, coverage,
+      inView: sample.visible && view.z < 0 && ndc.z >= -1 && ndc.z <= 1 && coverage > 0 };
   }
 
   tick(dt: number, time: number, exposing: boolean, exposureAge = 0) {
@@ -242,10 +258,16 @@ export class GhostWorld {
     const pos = this.positionAt(time, exposureAge);
     this.atmosphere.update(time, this.act, exposing, new THREE.Vector3(pos.x, pos.y, pos.z), exposureAge);
     this.hintLight.position.set(pos.x, pos.y, pos.z);
-    const pulse = this.act === 1 ? .65 + Math.abs(Math.sin(time * 8)) * 2.3 : this.act === 2 ? .65 + Math.sin(time * 2.5) * .35 : .65 + Math.sin(time * 3) * .3;
+    const fastPhase = ((time + .15) % 2.6 + 2.6) % 2.6;
+    const warning = fastPhase >= 2.35;
+    const pulse = this.act === 1 ? (warning ? 2.8 : pos.visible ? 1.8 : .08) : this.act === 2 ? .65 + Math.sin(time * 2.5) * .35 : .65 + Math.sin(time * 3) * .3;
     this.hintLight.intensity = exposing ? .5 : pulse;
-    this.cueBar.visible = this.act === 1 && !exposing;
-    if (this.cueBar.visible) this.cueBar.position.x = pos.x;
+    this.cueBar.visible = this.act === 1 && !exposing && (warning || pos.visible);
+    if (this.cueBar.visible) {
+      this.cueBar.position.x = warning ? -2.4 : pos.x;
+      this.cueBar.scale.x = warning ? .6 : 1.8;
+      if (warning) this.hintLight.position.x = -2.4;
+    }
     this.curtain.position.z = -3.5 + Math.sin(time * .6) * .06;
     if (!exposing && this.photoWasExposing) { this.hideGhosts(); this.photoWasExposing = false; }
   }
@@ -256,28 +278,29 @@ export class GhostWorld {
     this.photoWasExposing = true;
     this.hideGhosts();
     if (!samples.length) return;
-    const a = this.act;
-    const gain = Math.min(1, exposureSeconds * [1.14, 3.9, 2.2][a]);
-    const count = Math.min(19, samples.length);
-    const start = a * 20;
+    const film = formExposure(samples, this.act, exposureSeconds, s => this.project(s));
+    this.filmBleach.value = film.bleach;
+    const total = film.weights.reduce((sum, weight) => sum + weight, 0);
+    if (!total) return;
+    // Bounded 20 sprites. Each bin carries its share of optical density instead
+    // of adding a nearly opaque copy for every historical sample.
+    const count = Math.min(20, samples.length);
+    const opticalDensity = film.density * 2.5;
     for (let j = 0; j < count; j++) {
-      const index = count === 1 ? samples.length - 1 : Math.round(j * (samples.length - 1) / Math.max(1, count - 1));
-      const s = samples[index];
-      if (!s.visible) continue;
-      const sprite = this.sprites[start + j];
-      sprite.position.set(s.x, s.y, s.z);
-      sprite.scale.set(1.90 * s.size, 2.86 * s.size, 1);
-      const alpha = (j === count - 1 ? .55 : .12 + .19 * j / count) * gain;
-      (sprite.material as THREE.SpriteMaterial).opacity = alpha;
+      const from = Math.floor(j * samples.length / count);
+      const to = Math.floor((j + 1) * samples.length / count);
+      let weight = 0, x = 0, y = 0, z = 0, size = 0;
+      for (let k = from; k < to; k++) {
+        const w = film.weights[k], s = samples[k];
+        weight += w; x += s.x * w; y += s.y * w; z += s.z * w; size += s.size * w;
+      }
+      if (!weight) continue;
+      const sprite = this.sprites[this.act * 20 + j];
+      sprite.position.set(x / weight, y / weight, z / weight);
+      sprite.scale.set(1.90 * size / weight, 2.86 * size / weight, 1);
+      const mat = sprite.material as THREE.SpriteMaterial;
+      mat.opacity = 1 - Math.exp(-opticalDensity * weight / total);
       sprite.visible = true;
-    }
-    const now = samples[samples.length - 1];
-    if (now.visible) {
-      const main = this.sprites[start + 19];
-      main.position.set(now.x, now.y, now.z);
-      main.scale.set(1.90 * now.size, 2.86 * now.size, 1);
-      (main.material as THREE.SpriteMaterial).opacity = .12 + gain * .78;
-      main.visible = true;
     }
   }
 
@@ -290,6 +313,11 @@ export class GhostWorld {
 
   capture() {
     this.render();
-    return this.renderer.domElement.toDataURL('image/jpeg', .86);
+    const source = this.renderer.domElement;
+    const photo = document.createElement('canvas');
+    const ratio = Math.min(1, 960 / source.height);
+    photo.width = Math.round(source.width * ratio); photo.height = Math.round(source.height * ratio);
+    photo.getContext('2d')!.drawImage(source, 0, 0, photo.width, photo.height);
+    return photo.toDataURL('image/jpeg', .88);
   }
 }

@@ -28,6 +28,7 @@ export function bindCameraInput(
     if (event.pointerType === 'mouse' && event.button !== 0) return;
     event.preventDefault();
     if (!callbacks.canShoot() || shootPointer !== null) return;
+    lookPointer = null;
     shootPointer = event.pointerId;
     shutter.setPointerCapture(event.pointerId);
     callbacks.shootStart();
@@ -39,7 +40,7 @@ export function bindCameraInput(
     shootPointer = null;
     callbacks.shootEnd();
   });
-  shutter.addEventListener('pointercancel', cancel);
+  shutter.addEventListener('pointercancel', event => { if (event.pointerId === shootPointer) cancel(); });
   shutter.addEventListener('lostpointercapture', event => {
     if (event.pointerId === shootPointer) cancel();
   });
@@ -68,6 +69,7 @@ export function bindCameraInput(
   window.addEventListener('blur', cancel);
   document.addEventListener('visibilitychange', () => { if (document.hidden) cancel(); });
   window.addEventListener('orientationchange', cancel);
+  window.addEventListener('resize', cancel);
   document.addEventListener('contextmenu', event => {
     if ((event.target as Element).closest('#device')) event.preventDefault();
   });
