@@ -50,6 +50,12 @@ pnpm build
 
 最後のコマンドで `release/long-exposure-slapjam2.zip` を生成する（zip内の直下にindex.html）。itch.ioに公開するまで提出完了ではない。
 
+## コード構成
+
+`src/main.ts` は3幕の状態遷移と描画ループを担当。UIの静的マークアップは `view.ts`、効果音は `audio.ts`、タッチ・マウス操作は `input.ts`、6枚羽根は `iris.ts`、撮影評価は `shot.ts` に分割。教室の描画は `world.ts` と `atmosphere.ts` に置く。
+
+撮影評価のテスト：`pnpm test`。型チェックとビルド：`pnpm build`。
+
 ## 現状
 
 - [x] コンセプト・ループ・目標・失敗条件・最小スコープを文章化

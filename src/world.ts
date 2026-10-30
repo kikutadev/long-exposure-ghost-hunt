@@ -23,13 +23,11 @@ export class GhostWorld {
   readonly renderer: THREE.WebGLRenderer;
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(62, 1, .1, 45);
-  private clock = 0;
   private act = 0;
   private yaw = -.07;
   private pitch = -.03;
   private textures: THREE.Texture[] = [];
   private sprites: THREE.Sprite[] = [];
-  private spriteMats: THREE.SpriteMaterial[][] = [];
   private dust: THREE.Points;
   private flicker: THREE.PointLight;
   private hintLight: THREE.PointLight;
@@ -89,7 +87,6 @@ export class GhostWorld {
       t.anisotropy = Math.min(4, this.renderer.capabilities.getMaxAnisotropy());
     });
     for (let act = 0; act < 3; act++) {
-      const materials: THREE.SpriteMaterial[] = [];
       for (let i = 0; i < 20; i++) {
         const mat = new THREE.SpriteMaterial({ map: this.textures[act], transparent: true, opacity: 0, depthWrite: false, depthTest: false, color: 0xc3f7ff, toneMapped: false });
         const sprite = new THREE.Sprite(mat);
@@ -97,9 +94,7 @@ export class GhostWorld {
         sprite.scale.set(1.88, 2.88, 1);
         this.scene.add(sprite);
         this.sprites.push(sprite);
-        materials.push(mat);
       }
-      this.spriteMats.push(materials);
     }
     this.updateViewport();
   }
@@ -221,7 +216,6 @@ export class GhostWorld {
   }
 
   tick(dt: number, time: number, exposing: boolean, exposureAge = 0) {
-    this.clock = time;
     this.dust.rotation.y += dt * .002;
     const glitch = (Math.sin(time * 5.2) + Math.sin(time * 12.7) * .4) * .09;
     this.flicker.intensity = (this.act === 2 ? 3 : 9) + glitch;
