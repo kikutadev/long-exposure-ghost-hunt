@@ -50,6 +50,10 @@ pnpm build
 
 最後のコマンドで `release/long-exposure-slapjam2.zip` を生成する（zip内の直下にindex.html）。itch.ioに公開するまで提出完了ではない。
 
+## Blenderの小道具
+
+Blender 4.5 GUIとBlender MCPでノート・壁時計を実操作で造形。編集元は art/classroom-dress.blend、ゲーム用は public/assets/classroom-dress.glb。2,108 triangles、約194KB。スクリーンショットは art/preview-*.png。モデルはThree.jsで描画する。詳細は art/README.md。
+
 ## コード構成
 
 `src/main.ts` は3幕の状態遷移と描画ループを担当。UIの静的マークアップは `view.ts`、効果音は `audio.ts`、タッチ・マウス操作は `input.ts`、6枚羽根は `iris.ts`、撮影評価は `shot.ts` に分割。教室の描画は `world.ts` と `atmosphere.ts` に置く。

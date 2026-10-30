@@ -6,3 +6,6 @@ dist/
 
 .qa/
 release/
+
+# Blender temporary backups
+art/*.blend1

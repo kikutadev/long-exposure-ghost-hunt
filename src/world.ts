@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { decorateClassroom } from './atmosphere';
 
 export type GhostSample = { t: number; x: number; y: number; z: number; visible: boolean; size: number };
@@ -34,6 +35,9 @@ export class GhostWorld {
   private cueBar: THREE.Mesh;
   private frontFluorescent!: THREE.MeshStandardMaterial;
   private book: THREE.Mesh;
+  private oldClock: THREE.Object3D[] = [];
+  private turningPage: THREE.Object3D | null = null;
+  private pageStartingRotation = 0;
   private photoWasExposing = false;
   private curtain: THREE.Mesh;
   private atmosphere: ReturnType<typeof decorateClassroom>;
@@ -80,6 +84,16 @@ export class GhostWorld {
     const loader = new THREE.TextureLoader();
     const names = ['ghost-base.png', 'ghost-fast.png', 'ghost-near.png'];
     this.textures = await Promise.all(names.map(n => loader.loadAsync(`${import.meta.env.BASE_URL}assets/${n}`)));
+    try {
+      const dress = await new GLTFLoader().loadAsync(import.meta.env.BASE_URL + 'assets/classroom-dress.glb');
+      this.scene.add(dress.scene);
+      this.book.visible = false;
+      this.oldClock.forEach(node => { node.visible = false; });
+      this.turningPage = dress.scene.getObjectByName('BOOK_Page_Turning') ?? null;
+      this.pageStartingRotation = this.turningPage?.rotation.z ?? 0;
+    } catch (error) {
+      console.warn('Blender props unavailable, using basic props', error);
+    }
     this.textures.forEach(t => {
       t.colorSpace = THREE.SRGBColorSpace;
       t.minFilter = THREE.LinearMipmapLinearFilter;
@@ -152,7 +166,8 @@ export class GhostWorld {
     box(sc, [.13, .13, .06], [-4.51, 1.69, -6.72], 0xaca490);
     const circle = new THREE.Mesh(new THREE.RingGeometry(.21, .25, 32), new THREE.MeshBasicMaterial({ color: 0xb4b7a4 }));
     circle.position.set(3.8, 2.65, -8.23); sc.add(circle);
-    plank(sc, [3.8, 2.65, -8.2], [3.8, 2.75, -8.19], .008, 0xc9cfca);
+    this.oldClock.push(circle);
+    this.oldClock.push(plank(sc, [3.8, 2.65, -8.2], [3.8, 2.75, -8.19], .008, 0xc9cfca));
     const lamp = box(sc, [2.2, .09, .28], [0, 3.39, -3.6], 0xc5d5c8);
     this.frontFluorescent = lamp.material as THREE.MeshStandardMaterial;
     this.frontFluorescent.emissive.setHex(0xb4e1d3);
@@ -221,6 +236,9 @@ export class GhostWorld {
     this.flicker.intensity = (this.act === 2 ? 3 : 9) + glitch;
     this.frontFluorescent.emissiveIntensity = (this.act === 2 ? .36 : 1.2) + Math.max(0, glitch);
     this.book.rotation.z = .02 * Math.sin(time * 4.5) + (this.act === 0 ? .07 * Math.sin(time * 13) : 0);
+    if (this.turningPage) {
+      this.turningPage.rotation.z = this.pageStartingRotation + (this.act === 0 ? .12 * Math.sin(time * 4.6) : .025 * Math.sin(time));
+    }
     const pos = this.positionAt(time, exposureAge);
     this.atmosphere.update(time, this.act, exposing, new THREE.Vector3(pos.x, pos.y, pos.z), exposureAge);
     this.hintLight.position.set(pos.x, pos.y, pos.z);
