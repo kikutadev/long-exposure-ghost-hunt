@@ -79,25 +79,10 @@ export function decorateClassroom(scene:THREE.Scene){
   const shine=new THREE.Mesh(new THREE.PlaneGeometry(1.25,2.4),new THREE.MeshBasicMaterial({color:0x9de3e4,transparent:true,opacity:.037,depthWrite:false,side:THREE.DoubleSide}));
   shine.rotation.x=-Math.PI/2;shine.rotation.z=.33;shine.position.set(2.5,.035,-5.5+i*2.25);scene.add(shine);
  }
- const count=34,data=new Float32Array(count*3),geom=new THREE.BufferGeometry();
- geom.setAttribute('position',new THREE.BufferAttribute(data,3));
- const spectralDust=new THREE.Points(geom,new THREE.PointsMaterial({color:0x9deee4,size:.045,transparent:true,opacity:.6,depthWrite:false,blending:THREE.AdditiveBlending}));
- spectralDust.frustumCulled=false;scene.add(spectralDust);
  const danger=new THREE.PointLight(0xcf4249,0,4.6,2);
  scene.add(danger);
- const cone=new THREE.Mesh(new THREE.ConeGeometry(1.6,3.25,24,1,true),new THREE.MeshBasicMaterial({color:0x9bddd4,transparent:true,opacity:.018,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending}));
- cone.position.set(0,1.76,-3.6);scene.add(cone);
  return {update(time:number,act:number,exposing:boolean,position:THREE.Vector3,age=0){
-  const a=geom.attributes.position as THREE.BufferAttribute;
-  for(let i=0;i<count;i++){
-   const phi=i*2.39996+time*(act===1?5.2:.9),r=.27+(i%7)*.09;
-   a.setXYZ(i,position.x+Math.sin(phi)*r,position.y+.62*Math.cos(phi*1.3)+(i%5)*.035,position.z+.4*Math.cos(phi));
-  }
-  a.needsUpdate=true;
-  (spectralDust.material as THREE.PointsMaterial).opacity=exposing?.14:act===1?.92:.55;
-  danger.intensity=act===2&&exposing?Math.max(0,(age-.34))*5.6:0;
+  danger.intensity=act===2&&exposing?Math.pow(Math.max(0,(age-1.03)/.62),2)*2.0:0;
   danger.position.set(position.x,position.y,position.z+.6);
-  (cone.material as THREE.MeshBasicMaterial).opacity=(act===2?.012:.018)+Math.sin(time*1.3)*.004;
-  cone.rotation.y=Math.sin(time*.28)*.15;
  }};
 }

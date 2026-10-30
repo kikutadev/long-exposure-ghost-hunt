@@ -6,13 +6,13 @@ import { formExposure } from './shot';
 export type GhostSample = { t: number; x: number; y: number; z: number; visible: boolean; size: number };
 const fixed = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
-function box(scene: THREE.Scene, size: [number, number, number], at: [number, number, number], color: number, rough = .9) {
+function box(scene: THREE.Object3D, size: [number, number, number], at: [number, number, number], color: number, rough = .9) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), new THREE.MeshStandardMaterial({ color, roughness: rough }));
   mesh.position.set(...at);
   scene.add(mesh);
   return mesh;
 }
-function plank(scene: THREE.Scene, from: [number, number, number], to: [number, number, number], thickness: number, color: number) {
+function plank(scene: THREE.Object3D, from: [number, number, number], to: [number, number, number], thickness: number, color: number) {
   const a = new THREE.Vector3(...from), b = new THREE.Vector3(...to), d = b.clone().sub(a);
   const mesh = new THREE.Mesh(new THREE.CylinderGeometry(thickness, thickness, d.length(), 6), new THREE.MeshStandardMaterial({ color, roughness: .88 }));
   mesh.position.copy(a.add(b).multiplyScalar(.5));
@@ -30,12 +30,13 @@ export class GhostWorld {
   private pitch = -.03;
   private textures: THREE.Texture[] = [];
   private sprites: THREE.Sprite[] = [];
-  private dust: THREE.Points;
   private flicker: THREE.PointLight;
-  private hintLight: THREE.PointLight;
-  private cueBar: THREE.Mesh;
   private frontFluorescent!: THREE.MeshStandardMaterial;
   private book: THREE.Mesh;
+  private shiftingChairs: { mesh: THREE.Group; x: number; z: number }[] = [];
+  private turningPageY = 0;
+  private floatingPage: THREE.Object3D | null = null;
+  private floatingPageScale = new THREE.Vector3();
   private oldClock: THREE.Object3D[] = [];
   private turningPage: THREE.Object3D | null = null;
   private pageStartingRotation = 0;
@@ -59,25 +60,11 @@ export class GhostWorld {
     this.buildRoom();
     this.atmosphere = decorateClassroom(this.scene);
 
-    const count = 180, values = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      values[3 * i] = (Math.sin(i * 124.17) * 4.6);
-      values[3 * i + 1] = .28 + (i * 0.137) % 3.0;
-      values[3 * i + 2] = -7 + (i * .177) % 12;
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(values, 3));
-    this.dust = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xd6e3cf, size: .018, transparent: true, opacity: .42, sizeAttenuation: true }));
-    this.scene.add(this.dust);
     this.flicker = new THREE.PointLight(0xccefdc, 11, 12, 2);
     this.flicker.position.set(0, 3.0, -3);
     this.scene.add(this.flicker);
-    this.hintLight = new THREE.PointLight(0x55e7ed, 0, 4.5, 2);
-    this.scene.add(this.hintLight);
     this.book = box(this.scene, [.45, .018, .30], [-.84, .74, -4.9], 0x96917a);
     this.book.rotation.y = -.5;
-    this.cueBar = box(this.scene, [.45, .038, .05], [-3.95, 1.55, -5.8], 0x51c1b5);
-    this.cueBar.visible = false;
     this.curtain = box(this.scene, [.02, 3.4, 4.5], [-4.97, 1.8, -3.5], 0x20343a);
     this.curtain.visible = true;
   }
@@ -93,6 +80,9 @@ export class GhostWorld {
       this.oldClock.forEach(node => { node.visible = false; });
       this.turningPage = dress.scene.getObjectByName('BOOK_Page_Turning') ?? null;
       this.pageStartingRotation = this.turningPage?.rotation.z ?? 0;
+      this.turningPageY = this.turningPage?.position.y ?? 0;
+      this.floatingPage = dress.scene.getObjectByName('BOOK_Page_Floating') ?? null;
+      if (this.floatingPage) this.floatingPageScale.copy(this.floatingPage.scale);
     } catch (error) {
       console.warn('Blender props unavailable, using basic props', error);
     }
@@ -103,13 +93,13 @@ export class GhostWorld {
       t.anisotropy = Math.min(4, this.renderer.capabilities.getMaxAnisotropy());
     });
     for (let act = 0; act < 3; act++) {
-      for (let i = 0; i < 20; i++) {
-        const mat = new THREE.SpriteMaterial({ map: this.textures[act], transparent: true, opacity: 0, depthWrite: false, depthTest: false, color: 0xc3f7ff, toneMapped: false });
+      for (let i = 0; i < 6; i++) {
+        const mat = new THREE.SpriteMaterial({ map: this.textures[act], transparent: true, opacity: 0, depthWrite: false, depthTest: true, color: 0xe4ded7, toneMapped: false });
         mat.onBeforeCompile = shader => {
           shader.uniforms.filmBleach = this.filmBleach;
           shader.fragmentShader = 'uniform float filmBleach;\n' + shader.fragmentShader;
           shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>',
-            '#include <map_fragment>\n diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), filmBleach);');
+            '#include <map_fragment>\n float filmGray = dot(diffuseColor.rgb, vec3(.299, .587, .114));\n diffuseColor.rgb = mix(diffuseColor.rgb, vec3(filmGray), .88);\n diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), filmBleach);');
         };
         const sprite = new THREE.Sprite(mat);
         sprite.visible = false;
@@ -164,9 +154,12 @@ export class GhostWorld {
       box(sc, [1.45, .035, .79], [x, .86, z], 0x9c8160);
       for (let dx of [-.57, .57]) for (let dz of [-.26, .26])
         box(sc, [.075, .73, .075], [x + dx, .39, z + dz], 0x48483c);
-      box(sc, [1.1, .48, .05], [x, 1.18, z + .85], 0x635543);
-      box(sc, [.10, .55, .08], [x - .5, .59, z + .75], 0x474438);
-      box(sc, [.10, .55, .08], [x + .5, .59, z + .75], 0x474438);
+      const chair = new THREE.Group();
+      sc.add(chair);
+      box(chair, [1.1, .48, .05], [x, 1.18, z + .85], 0x635543);
+      box(chair, [.10, .55, .08], [x - .5, .59, z + .75], 0x474438);
+      box(chair, [.10, .55, .08], [x + .5, .59, z + .75], 0x474438);
+      if (z < -2) this.shiftingChairs.push({ mesh: chair, x, z });
     }
     box(sc, [1.0, .045, .6], [2.8, .92, -5.6], 0x493e31);
     box(sc, [1.3, 1.7, .1], [-4.6, 1.7, -6.8], 0x7b6955);
@@ -247,28 +240,43 @@ export class GhostWorld {
   }
 
   tick(dt: number, time: number, exposing: boolean, exposureAge = 0) {
-    this.dust.rotation.y += dt * .002;
     const glitch = (Math.sin(time * 5.2) + Math.sin(time * 12.7) * .4) * .09;
-    this.flicker.intensity = (this.act === 2 ? 3 : 9) + glitch;
-    this.frontFluorescent.emissiveIntensity = (this.act === 2 ? .36 : 1.2) + Math.max(0, glitch);
-    this.book.rotation.z = .02 * Math.sin(time * 4.5) + (this.act === 0 ? .07 * Math.sin(time * 13) : 0);
+    this.flicker.intensity = (this.act === 2 ? 2.2 : 5) + glitch;
+    this.frontFluorescent.emissiveIntensity = (this.act === 2 ? .24 : .68) + Math.max(0, glitch);
+    // Environmental clues are physical consequences, not a map of the ghost.
+    const noteTwitch = Math.pow(Math.max(0, Math.sin(time * 2.3 - .7)), 7);
+    this.book.rotation.z = this.act === 0 ? noteTwitch * .18 : 0;
     if (this.turningPage) {
-      this.turningPage.rotation.z = this.pageStartingRotation + (this.act === 0 ? .12 * Math.sin(time * 4.6) : .025 * Math.sin(time));
+      this.turningPage.rotation.z = this.pageStartingRotation + (this.act === 0 ? .49 * noteTwitch : 0);
+      this.turningPage.position.y = this.turningPageY + (this.act === 0 ? .045 * noteTwitch : 0);
+      this.turningPage.visible = this.act === 0;
     }
+    if (this.floatingPage) {
+      const flutter = this.act === 0 ? noteTwitch : 0;
+      this.floatingPage.scale.copy(this.floatingPageScale).multiplyScalar(.005 + flutter * .995);
+    }
+    this.shiftingChairs.forEach(({ mesh, x, z }) => {
+      let jerk = 0;
+      if (this.act === 0 && x === -2.6 && z === -3.25) {
+        jerk = Math.pow(Math.max(0, Math.sin(time * 1.7)), 9) * .22;
+      } else if (this.act === 1 && z === -3.25) {
+        const cue = ((time - (x + 2.6) * .115) % 2.6 + 2.6) % 2.6;
+        jerk = cue < .34 ? .34 * Math.sin(Math.PI * cue / .34) : 0;
+      } else if (this.act === 2 && x === 0) {
+        const phase = ((time - (z + 5.7) * .26) % 3.6 + 3.6) % 3.6;
+        jerk = phase < .31 ? .14 * Math.sin(Math.PI * phase / .31) : 0;
+      }
+      // The chair shifts sideways in the first two acts; in the last act,
+      // chairs scrape toward the camera as the unseen presence approaches.
+      mesh.position.x = this.act < 2 ? jerk : 0;
+      mesh.position.z = this.act === 2 ? jerk : 0;
+      const back = mesh.children[0];
+      if (back) back.rotation.x = jerk * .35;
+    });
     const pos = this.positionAt(time, exposureAge);
     this.atmosphere.update(time, this.act, exposing, new THREE.Vector3(pos.x, pos.y, pos.z), exposureAge);
-    this.hintLight.position.set(pos.x, pos.y, pos.z);
-    const fastPhase = ((time + .15) % 2.6 + 2.6) % 2.6;
-    const warning = fastPhase >= 2.35;
-    const pulse = this.act === 1 ? (warning ? 2.8 : pos.visible ? 1.8 : .08) : this.act === 2 ? .65 + Math.sin(time * 2.5) * .35 : .65 + Math.sin(time * 3) * .3;
-    this.hintLight.intensity = exposing ? .5 : pulse;
-    this.cueBar.visible = this.act === 1 && !exposing && (warning || pos.visible);
-    if (this.cueBar.visible) {
-      this.cueBar.position.x = warning ? -2.4 : pos.x;
-      this.cueBar.scale.x = warning ? .6 : 1.8;
-      if (warning) this.hintLight.position.x = -2.4;
-    }
-    this.curtain.position.z = -3.5 + Math.sin(time * .6) * .06;
+    const curtainCue = ((time + .15) % 2.6 + 2.6) % 2.6;
+    this.curtain.position.z = -3.5 + (this.act === 1 && curtainCue > 2.25 ? -.22 * Math.sin((curtainCue - 2.25) / .35 * Math.PI) : 0);
     if (!exposing && this.photoWasExposing) { this.hideGhosts(); this.photoWasExposing = false; }
   }
 
@@ -282,25 +290,34 @@ export class GhostWorld {
     this.filmBleach.value = film.bleach;
     const total = film.weights.reduce((sum, weight) => sum + weight, 0);
     if (!total) return;
-    // Bounded 20 sprites. Each bin carries its share of optical density instead
-    // of adding a nearly opaque copy for every historical sample.
-    const count = Math.min(20, samples.length);
-    const opticalDensity = film.density * 2.5;
-    for (let j = 0; j < count; j++) {
-      const from = Math.floor(j * samples.length / count);
-      const to = Math.floor((j + 1) * samples.length / count);
-      let weight = 0, x = 0, y = 0, z = 0, size = 0;
-      for (let k = from; k < to; k++) {
-        const w = film.weights[k], s = samples[k];
-        weight += w; x += s.x * w; y += s.y * w; z += s.z * w; size += s.size * w;
-      }
-      if (!weight) continue;
-      const sprite = this.sprites[this.act * 20 + j];
-      sprite.position.set(x / weight, y / weight, z / weight);
-      sprite.scale.set(1.90 * size / weight, 2.86 * size / weight, 1);
-      const mat = sprite.material as THREE.SpriteMaterial;
-      mat.opacity = 1 - Math.exp(-opticalDensity * weight / total);
-      sprite.visible = true;
+    // One readable human figure, with a few faint positional echoes.
+    // Do not convert the ghost into a glowing cloud of repeated silhouettes.
+    const strength = film.density * (1 - film.bleach * .6);
+    let mid = 0, accumulated = 0;
+    for (let i = 0; i < film.weights.length; i++) {
+      accumulated += film.weights[i];
+      if (accumulated >= total / 2) { mid = i; break; }
+    }
+    const primary = samples[mid];
+    const main = this.sprites[this.act * 6];
+    main.position.set(primary.x, primary.y, primary.z);
+    main.scale.set(1.90 * primary.size, 2.86 * primary.size, 1);
+    (main.material as THREE.SpriteMaterial).opacity = Math.min(.96, strength * .9);
+    main.visible = true;
+
+    // Only moving ghosts leave a noticeable trail; ghosts that stand still
+    // become clearer rather than appearing as an opaque luminous blob.
+    const motion = 1 - film.sharpness;
+    const trailStrength = Math.min(.12, .035 + motion * .13) * strength;
+    for (let j = 0; j < 5; j++) {
+      const index = Math.min(samples.length - 1, Math.floor((j + .5) * samples.length / 5));
+      const sample = samples[index], projection = this.project(sample);
+      const sprite = this.sprites[this.act * 6 + j + 1];
+      if (!projection.inView || Math.abs(index - mid) < 2) continue;
+      sprite.position.set(sample.x, sample.y, sample.z);
+      sprite.scale.set(1.90 * sample.size, 2.86 * sample.size, 1);
+      (sprite.material as THREE.SpriteMaterial).opacity = trailStrength * (film.weights[index] > 0 ? 1 : 0);
+      sprite.visible = film.weights[index] > 0;
     }
   }
 

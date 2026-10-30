@@ -67,7 +67,7 @@ function syncHUD() {
   $('#film-progress').querySelectorAll('span').forEach((el, index) => el.classList.toggle('filled', index < photos.length));
   $('#clue-label').textContent = [
     'FOLLOW THE RUSTLING NOTE',
-    'FOLLOW THE BRIEF FLASH',
+    'WATCH THE CHAIRS',
     'SOMETHING IS GETTING CLOSER'
   ][act];
   $('#exposure-value').innerHTML = `${exposureSeconds.toFixed(2)}<span>s</span>`;
@@ -125,8 +125,8 @@ function prepareLook() {
   shutter.classList.remove('pressed');
   iris.draw(1); irisOpen = 1;
   irisDirection = null;
-  hint.textContent = act === 0 ? 'HOLD TO EXPOSE' : act === 1 ? 'FOLLOW THE SIGNAL' : 'DON\'T LET IT REACH YOU';
-  hint.classList.remove('gone');
+  hint.textContent = 'HOLD TO EXPOSE';
+  hint.classList.toggle('gone', act !== 0);
   $('#signal-label').textContent = 'SPECTRAL SIGNAL';
   syncHUD();
 }
