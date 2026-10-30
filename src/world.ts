@@ -34,9 +34,6 @@ export class GhostWorld {
   private frontFluorescent!: THREE.MeshStandardMaterial;
   private book: THREE.Mesh;
   private shiftingChairs: { mesh: THREE.Group; x: number; z: number }[] = [];
-  private turningPageY = 0;
-  private floatingPage: THREE.Object3D | null = null;
-  private floatingPageScale = new THREE.Vector3();
   private oldClock: THREE.Object3D[] = [];
   private turningPage: THREE.Object3D | null = null;
   private pageStartingRotation = 0;
@@ -80,9 +77,6 @@ export class GhostWorld {
       this.oldClock.forEach(node => { node.visible = false; });
       this.turningPage = dress.scene.getObjectByName('BOOK_Page_Turning') ?? null;
       this.pageStartingRotation = this.turningPage?.rotation.z ?? 0;
-      this.turningPageY = this.turningPage?.position.y ?? 0;
-      this.floatingPage = dress.scene.getObjectByName('BOOK_Page_Floating') ?? null;
-      if (this.floatingPage) this.floatingPageScale.copy(this.floatingPage.scale);
     } catch (error) {
       console.warn('Blender props unavailable, using basic props', error);
     }
@@ -244,16 +238,19 @@ export class GhostWorld {
     this.flicker.intensity = (this.act === 2 ? 2.2 : 5) + glitch;
     this.frontFluorescent.emissiveIntensity = (this.act === 2 ? .24 : .68) + Math.max(0, glitch);
     // Environmental clues are physical consequences, not a map of the ghost.
-    const noteTwitch = Math.pow(Math.max(0, Math.sin(time * 2.3 - .7)), 7);
-    this.book.rotation.z = this.act === 0 ? noteTwitch * .18 : 0;
+    const pageTime = ((time + .2) % 4.1 + 4.1) % 4.1;
+    const ease = (v: number) => {
+      const x = fixed(v, 0, 1);
+      return x * x * (3 - 2 * x);
+    };
+    const rise = ease((pageTime - .45) / .25);
+    const fall = 1 - ease((pageTime - 1.00) / .32);
+    const pageTurn = this.act === 0 ? rise * fall : 0;
+    this.book.rotation.z = pageTurn * .045;
     if (this.turningPage) {
-      this.turningPage.rotation.z = this.pageStartingRotation + (this.act === 0 ? .49 * noteTwitch : 0);
-      this.turningPage.position.y = this.turningPageY + (this.act === 0 ? .045 * noteTwitch : 0);
-      this.turningPage.visible = this.act === 0;
-    }
-    if (this.floatingPage) {
-      const flutter = this.act === 0 ? noteTwitch : 0;
-      this.floatingPage.scale.copy(this.floatingPageScale).multiplyScalar(.005 + flutter * .995);
+      // Blender-built page's origin is the notebook spine, not the sheet center.
+      this.turningPage.rotation.z = this.pageStartingRotation + pageTurn * 1.15;
+      this.turningPage.visible = true;
     }
     this.shiftingChairs.forEach(({ mesh, x, z }) => {
       let jerk = 0;

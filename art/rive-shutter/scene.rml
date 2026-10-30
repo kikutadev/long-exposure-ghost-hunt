@@ -1,0 +1,142 @@
+<Rive version="1" kind="fragment">
+  <Artboard defaultStateMachineId="0:7" styleId="0:5" width="400" height="400" name="Leaf Shutter" id="0:2">
+    <LayoutComponentStyle name="Artboard Style" id="0:5"/>
+    <Fill name="Background"><SolidColor colorValue="FF0D1216" name="Color"/></Fill>
+    <Shape x="200" y="200" name="Aperture" id="0:50">
+      <Ellipse width="115" height="115" name="Open Pupil"/>
+      <Fill name="Fill"><SolidColor colorValue="FF0B0E12" name="Black"/></Fill>
+    </Shape>
+    <Shape x="200.000" y="105.000" rotation="0.000" name="Leaf 1" id="0:30">
+      <Triangle width="205" height="165" name="Metal 1"/>
+      <Fill name="Fill"><SolidColor colorValue="FF47545D" name="Metal Tone"/></Fill>
+    </Shape>
+    <Shape x="282.272" y="152.500" rotation="1.047" name="Leaf 2" id="0:31">
+      <Triangle width="205" height="165" name="Metal 2"/>
+      <Fill name="Fill"><SolidColor colorValue="FF66747B" name="Metal Tone"/></Fill>
+    </Shape>
+    <Shape x="282.272" y="247.500" rotation="2.094" name="Leaf 3" id="0:32">
+      <Triangle width="205" height="165" name="Metal 3"/>
+      <Fill name="Fill"><SolidColor colorValue="FF8D9798" name="Metal Tone"/></Fill>
+    </Shape>
+    <Shape x="200.000" y="295.000" rotation="3.142" name="Leaf 4" id="0:33">
+      <Triangle width="205" height="165" name="Metal 4"/>
+      <Fill name="Fill"><SolidColor colorValue="FF515E67" name="Metal Tone"/></Fill>
+    </Shape>
+    <Shape x="117.728" y="247.500" rotation="4.189" name="Leaf 5" id="0:34">
+      <Triangle width="205" height="165" name="Metal 5"/>
+      <Fill name="Fill"><SolidColor colorValue="FF9AA4A4" name="Metal Tone"/></Fill>
+    </Shape>
+    <Shape x="117.728" y="152.500" rotation="5.236" name="Leaf 6" id="0:35">
+      <Triangle width="205" height="165" name="Metal 6"/>
+      <Fill name="Fill"><SolidColor colorValue="FF66727B" name="Metal Tone"/></Fill>
+    </Shape>
+    <Shape x="200" y="200" name="Outer Steel Ring" id="0:10">
+      <Ellipse width="332" height="332" name="Outer Circle"/>
+      <Fill name="Fill"><SolidColor colorValue="FF202C33" name="Color"/></Fill>
+    </Shape>
+    <StateMachine name="Shutter Mechanism" id="0:7">
+      <StateMachineLayer name="Mechanism" id="0:8">
+        <AnyState x="120" y="-120"/>
+        <ExitState x="400" y="-120"/>
+        <EntryState><StateTransition stateToId="0:12"/></EntryState>
+        <AnimationState x="200" animationId="0:6" id="0:12"/>
+      </StateMachineLayer>
+    </StateMachine>
+    <LinearAnimation duration="9" name="Close" id="0:6">
+      <KeyedObject objectId="0:30">
+        <KeyedProperty propertyKey="13">
+          <KeyFrameDouble value="200.000" interpolationType="1" frame="0"/>
+          <KeyFrameDouble value="200.000" interpolationType="3" frame="9"/>
+        </KeyedProperty>
+        <KeyedProperty propertyKey="14">
+          <KeyFrameDouble value="105.000" interpolationType="1" frame="0"/>
+          <KeyFrameDouble value="180.000" interpolationType="3" frame="9"/>
+        </KeyedProperty>
+        <KeyedProperty propertyKey="15">
+          <KeyFrameDouble value="0.000" interpolationType="1" frame="0"/>
+          <KeyFrameDouble value="0.310" interpolationType="3" frame="9"/>
+        </KeyedProperty>
+      </KeyedObject>
+      <KeyedObject objectId="0:31">
+        <KeyedProperty propertyKey="13">
+          <KeyFrameDouble value="282.272" interpolationType="1" frame="0"/>
+          <KeyFrameDouble value="217.321" interpolationType="3" frame="9"/>
+        </KeyedProperty>
+        <KeyedProperty propertyKey="14">
+          <KeyFrameDouble value="152.500" interpolationType="1" frame="0"/>
+          <KeyFrameDouble value="190.000" interpolationType="3" frame="9"/>
+        </KeyedProperty>
+        <KeyedProperty propertyKey="15">
+          <KeyFrameDouble value="1.047" interpolationType="1" frame="0"/>
+          <KeyFrameDouble value="1.357" interpolationType="3" frame="9"/>
+        </KeyedProperty>
+      </KeyedObject>
+      <KeyedObject objectId="0:32">
+        <KeyedProperty propertyKey="13">
+          <KeyFrameDouble value="282.272" interpolationType="1" frame="0"/>
+          <KeyFrameDouble value="217.321" interpolationType="3" frame="9"/>
+        </KeyedProperty>
+        <KeyedProperty propertyKey="14">
+          <KeyFrameDouble value="247.500" interpolationType="1" frame="0"/>
+          <KeyFrameDouble value="210.000" interpolationType="3" frame="9"/>
+        </KeyedProperty>
+        <KeyedProperty propertyKey="15">
+          <KeyFrameDouble value="2.094" interpolationType="1" frame="0"/>
+          <KeyFrameDouble value="2.404" interpolationType="3" frame="9"/>
+        </KeyedProperty>
+      </KeyedObject>
+      <KeyedObject objectId="0:33">
+        <KeyedProperty propertyKey="13">
+          <KeyFrameDouble value="200.000" interpolationType="1" frame="0"/>
+          <KeyFrameDouble value="200.000" interpolationType="3" frame="9"/>
+        </KeyedProperty>
+        <KeyedProperty propertyKey="14">
+          <KeyFrameDouble value="295.000" interpolationType="1" frame="0"/>
+          <KeyFrameDouble value="220.000" interpolationType="3" frame="9"/>
+        </KeyedProperty>
+        <KeyedProperty propertyKey="15">
+          <KeyFrameDouble value="3.142" interpolationType="1" frame="0"/>
+          <KeyFrameDouble value="3.452" interpolationType="3" frame="9"/>
+        </KeyedProperty>
+      </KeyedObject>
+      <KeyedObject objectId="0:34">
+        <KeyedProperty propertyKey="13">
+          <KeyFrameDouble value="117.728" interpolationType="1" frame="0"/>
+          <KeyFrameDouble value="182.679" interpolationType="3" frame="9"/>
+        </KeyedProperty>
+        <KeyedProperty propertyKey="14">
+          <KeyFrameDouble value="247.500" interpolationType="1" frame="0"/>
+          <KeyFrameDouble value="210.000" interpolationType="3" frame="9"/>
+        </KeyedProperty>
+        <KeyedProperty propertyKey="15">
+          <KeyFrameDouble value="4.189" interpolationType="1" frame="0"/>
+          <KeyFrameDouble value="4.499" interpolationType="3" frame="9"/>
+        </KeyedProperty>
+      </KeyedObject>
+      <KeyedObject objectId="0:35">
+        <KeyedProperty propertyKey="13">
+          <KeyFrameDouble value="117.728" interpolationType="1" frame="0"/>
+          <KeyFrameDouble value="182.679" interpolationType="3" frame="9"/>
+        </KeyedProperty>
+        <KeyedProperty propertyKey="14">
+          <KeyFrameDouble value="152.500" interpolationType="1" frame="0"/>
+          <KeyFrameDouble value="190.000" interpolationType="3" frame="9"/>
+        </KeyedProperty>
+        <KeyedProperty propertyKey="15">
+          <KeyFrameDouble value="5.236" interpolationType="1" frame="0"/>
+          <KeyFrameDouble value="5.546" interpolationType="3" frame="9"/>
+        </KeyedProperty>
+      </KeyedObject>
+      <KeyedObject objectId="0:50">
+        <KeyedProperty propertyKey="16">
+          <KeyFrameDouble value="1" interpolationType="1" frame="0"/>
+          <KeyFrameDouble value=".01" interpolationType="3" frame="9"/>
+        </KeyedProperty>
+        <KeyedProperty propertyKey="17">
+          <KeyFrameDouble value="1" interpolationType="1" frame="0"/>
+          <KeyFrameDouble value=".01" interpolationType="3" frame="9"/>
+        </KeyedProperty>
+      </KeyedObject>
+    </LinearAnimation>
+  </Artboard>
+</Rive>

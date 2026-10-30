@@ -8,7 +8,7 @@ SLAPJAM #2（テーマ **Speed**）向け、スマホ縦画面の短編3D心霊�
 
 - 目標：速度特性の異なる3体を撮影して、3枚の心霊写真をアルバムに収める。
 - 体験：探索 → 狙う → 長押し露光 → 指を離す → シャッター閉鎖 → 写真現像。
-- 想定プレイ時間：初見3〜6分。失敗してもゲームオーバーなし・即撮り直し。
+- 想定プレイ時間：初見3〜6分。軽い失敗はその場で撮り直せるが、露光過多・幽霊接近では死亡して第1幕からやり直し。
 - 舞台：単一の廃校教室。異変の段階演出で3幕を見せる。
 - 方向性：純粋な恐怖よりも、カメラの操作感・捕まえる達成感・奇妙な写真の発見を優先する。
 
@@ -52,7 +52,7 @@ pnpm build
 
 ## Blenderの小道具
 
-Blender 4.5 GUIとBlender MCPでノート・壁時計を実操作で造形。編集元は art/classroom-dress.blend、ゲーム用は public/assets/classroom-dress.glb。2,108 triangles、約194KB。スクリーンショットは art/preview-*.png。モデルはThree.jsで描画する。詳細は art/README.md。
+ノートと壁時計はBlender 4.5で制作。現在はGUIを使わず `art/build-notebook.py` をbpyヘッドレスで実行する。編集元は art/classroom-dress.blend、ゲーム用は public/assets/classroom-dress.glb（約211KB）。スクリーンショットは art/preview-*.png。モデルはThree.jsで描画する。Rive CLIのシャッター試作は art/rive-shutter に置くが、現行サイトは引き続きSVGシャッター。詳細は art/README.md。
 
 ## 撮影リスクとゲームオーバー
 
