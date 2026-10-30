@@ -6,7 +6,7 @@
 
 - Blender GUIを使用せず `Blender --background --python art/build-notebook.py` でノートを造形し直し、`.blend`・GLB・オフスクリーンレンダリングを更新。机上のページは背表紙を軸に回転する方式に切り替え、PNGと実ゲーム内で確認。
 - Rive CLI v1.8.0をローカルで試し、RMLで6枚羽根の閉鎖アニメーション＋最小ステートマシンを作成。verify 0エラー・0警告、開/閉のCLIレンダリングを目視。**実行中のゲームへは組み込んでいない。** 署名した.rivファイルとWebランタイムの統合・入力連動QAが必要（CLIは現在未ログイン）。
-- pnpm test 18/18、pnpm build成功。Chrome 390×844のローカル3幕クリア・過露光死・接近死・RESTARTを再確認。iPhone Safari / Android Chrome実機とRive機構の実装は未達。
+- pnpm test 18/18、pnpm build成功。Chrome 390×844のローカル3幕クリア・過露光死・接近死・RESTARTを再確認。2026-10-31の公開更新後、GitHub Pagesで新JSと新GLB(210,628 bytes)のHTTP 200、3幕END→REPLAYと死亡2経路→RESTART、ブラウザエラー0を確認。iPhone Safari / Android Chrome実機とRive機構の実装は未達。
 - 次の品質ゲート：ノートのページが机に刺さらないか、Riveの羽根が本物の金属シャッターらしく見えるかを先に改善。Riveが現行SVGより劣るなら単なるライブラリ採用を目的にせず、現行UIを維持する。
 
 ## 制作手段と受入方針の更新（2026-10-30）
