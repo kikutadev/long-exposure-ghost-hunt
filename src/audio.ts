@@ -4,7 +4,7 @@ export class Sound {
   private enabled = true;
   private lastFilmTick = -1;
   private nextApproachStep = 0;
-  private nextTeleport = 0;
+  private previousPresenceVisible = true;
   get isEnabled() { return this.enabled; }
   toggle() { this.enabled = !this.enabled; if (this.enabled) this.start(); else this.pause(); }
   start() {
@@ -93,17 +93,14 @@ export class Sound {
     src.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
     src.start();
   }
-  expose(seconds: number, act: number) {
+  expose(seconds: number, act: number, presenceVisible = true) {
     // Mechanical transport / approaching pressure, not a correct-time chime.
-    if (act === 2) {
-      const teleports = [.99, 1.34];
-      while (this.nextTeleport < teleports.length && seconds >= teleports[this.nextTeleport]) {
-        this.nextTeleport++;
-        // A quick, dry interruption rather than a loud synthetic jump scare.
-        this.noise(.045, .024, 480);
-        this.tone(63, .12, .023, 'triangle', 36);
-      }
+    if (act === 2 && this.previousPresenceVisible && !presenceVisible) {
+      // Use actual disappearance, not a fixed clock; every approach may differ.
+      this.noise(.045, .024, 480);
+      this.tone(63, .12, .023, 'triangle', 36);
     }
+    this.previousPresenceVisible = presenceVisible;
     const tick = Math.floor(seconds * (act === 2 ? 5 + seconds * 3 : 7));
     if (tick === this.lastFilmTick) return;
     this.lastFilmTick = tick;
@@ -123,7 +120,7 @@ export class Sound {
   open() {
     this.lastFilmTick = -1;
     this.nextApproachStep = 0;
-    this.nextTeleport = 0;
+    this.previousPresenceVisible = true;
     this.tone(245, .11, .025, 'sawtooth', 410);
     this.noise(.08, .026);
   }

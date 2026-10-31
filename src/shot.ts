@@ -1,4 +1,5 @@
 import type { GhostSample } from './world';
+import { hasReachedPhotographer, distanceToPhotographer, APPROACH_WARNING_DISTANCE } from './near-ghost-motion.ts';
 const clamp = (v: number, min = 0, max = 1) => Math.max(min, Math.min(max, v));
 
 // Width/height are the visible subject footprint in NDC, not just its centre.
@@ -44,7 +45,7 @@ export function formExposure(samples: readonly GhostSample[], act: number, secon
 
 export function evaluateShot(samples: readonly GhostSample[], act: number, exposureSeconds: number, project: (sample: GhostSample) => Projection): ShotResult {
   const film = formExposure(samples, act, exposureSeconds, project);
-  const tooLate = act === 2 && exposureSeconds >= exposureLimit(act);
+  const tooLate = act === 2 && samples.some(hasReachedPhotographer);
   const quality = tooLate ? 0 : film.quality;
   const success = quality >= 45 && film.visibleTime >= .10;
   let label = success ? (quality >= 75 ? 'CRYSTAL CLEAR' : 'GHOST CAPTURED') : 'TOO DARK';
@@ -61,8 +62,8 @@ export function evaluateShot(samples: readonly GhostSample[], act: number, expos
 
 export type DeathCause = 'OVEREXPOSED' | 'TOO CLOSE';
 
-/** The same exposure deadline governs capture and fatal evaluation. */
-export const exposureLimit = (act: number) => act === 2 ? 1.65 : 2.4;
+/** Upper bound on film sampling; stage-three attacks are decided by distance, not this cap. */
+export const exposureLimit = (_act: number) => 2.4;
 
 /** Fatal danger is derived from the same film response that draws the photograph. */
 export function assessFatalExposure(
@@ -72,11 +73,12 @@ export function assessFatalExposure(
   project: (sample: GhostSample) => Projection
 ): { cause: DeathCause | null; warning: boolean } {
   const film = formExposure(samples, act, seconds, project);
-  const tooClose = act === 2 && seconds >= exposureLimit(act);
+  const tooClose = act === 2 && samples.some(hasReachedPhotographer);
   const openTooLong = act !== 2 && seconds >= exposureLimit(act);
   const fatalLight = act !== 2 && film.visibleTime >= .1 && film.bleach >= .75;
   return {
     cause: tooClose ? 'TOO CLOSE' : (openTooLong || fatalLight) ? 'OVEREXPOSED' : null,
-    warning: (act === 2 && seconds >= 1.07) || (act !== 2 && seconds >= 1.75) || film.bleach >= .35,
+    warning: (act === 2 && samples.some(s => s.visible && distanceToPhotographer(s) <= APPROACH_WARNING_DISTANCE))
+      || (act !== 2 && seconds >= 1.75) || film.bleach >= .35,
   };
 }

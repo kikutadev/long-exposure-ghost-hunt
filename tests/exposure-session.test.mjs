@@ -16,7 +16,7 @@ test('release records 30Hz samples plus the fractional last interval', () => {
   assert.ok(Math.abs(formExposure(session.samples, 0, session.elapsed(100.42, 2.4), center).energy - .42) < 1e-9);
 });
 
-test('sampling stops at fatal deadline and cannot duplicate final samples', () => {
+test('sampling respects its time cap and cannot duplicate final samples', () => {
   const session = new ExposureSession();
   session.begin(10, 30);
   session.collect(12.9, 1.65, positionAt, true);

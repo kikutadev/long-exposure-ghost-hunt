@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { evaluateShot } from '../src/shot.ts';
+import { nearGhostSample, PHOTOGRAPHER_POSITION } from '../src/near-ghost-motion.ts';
 
 const sample = (index, visible = true) =>
   ({ t: index / 30, x: 0, y: 1.6, z: -5, size: 1, visible });
@@ -35,8 +36,10 @@ test('a fast ghost blurs on a long exposure even with abundant light', () => {
   assert.equal(result.label, 'TOO BLURRY');
 });
 
-test('approaching ghost reaches the lens at the deadline', () => {
-  const result = evaluateShot(frames(50), 2, 1.66, center);
+test('a shot that includes a materialized attacker cannot be captured as a photo', () => {
+  const samples = frames(20);
+  samples.push({ t: .7, x: 0, y: 1.65, z: PHOTOGRAPHER_POSITION.z - 1.2, size: 1, visible: true });
+  const result = evaluateShot(samples, 2, .7, center);
   assert.equal(result.success, false);
   assert.equal(result.label, 'TOO LATE');
 });
@@ -100,12 +103,17 @@ test('fatal exposure obeys distinct safe, warning and lethal thresholds', async 
   assert.equal(dead.cause, 'OVEREXPOSED');
 });
 
-test('approaching spirit kills at contact but not while still safely distant', async () => {
+test('distance alone decides the kill, even outside the viewfinder', async () => {
   const {assessFatalExposure} = await import('../src/shot.ts');
   const empty = () => ({x: 3, y: 3, inView: false});
-  assert.equal(assessFatalExposure(timed(.75), 2, .75, empty).cause, null);
-  assert.equal(assessFatalExposure(timed(1.60), 2, 1.60, empty).cause, null);
-  assert.equal(assessFatalExposure(timed(1.65), 2, 1.65, empty).cause, 'TOO CLOSE');
+  const far = {t: .2, x: 0, y: 1.65, z: -5, size: 1, visible: true};
+  const near = {...far, z: PHOTOGRAPHER_POSITION.z - 1.3};
+  assert.equal(assessFatalExposure([far], 2, 1.9, empty).cause, null,
+    'a clock alone must never kill the photographer');
+  assert.equal(assessFatalExposure([near], 2, .2, empty).cause, 'TOO CLOSE',
+    'even a very early approach must kill');
+  assert.equal(assessFatalExposure([{...near,visible:false}], 2, .2, empty).cause, null,
+    'a ghost between teleport locations is not physically present');
 });
 
 test('prolonged shutter hold always kills even outside the frame', async () => {
@@ -115,8 +123,17 @@ test('prolonged shutter hold always kills even outside the frame', async () => {
   assert.equal(assessFatalExposure(timed(2.40), 0, 2.40, empty).cause, 'OVEREXPOSED');
 });
 
-test('third act prioritizes dangerous proximity over optical bleaching', async () => {
+test('second teleport immediately materializes inside the kill radius', async () => {
   const {assessFatalExposure} = await import('../src/shot.ts');
-  assert.equal(assessFatalExposure(timed(1.35), 2, 1.35, center).cause, null);
-  assert.equal(assessFatalExposure(timed(1.65), 2, 1.65, center).cause, 'TOO CLOSE');
+  const startTime = 4;
+  const frames = Array.from({length: 54},(_,i) => {
+    const age = (i+1)/30;
+    return nearGhostSample(startTime+age, age);
+  });
+  const firstContactIndex = frames.findIndex(s => s.visible && Math.hypot(
+    s.x-PHOTOGRAPHER_POSITION.x,s.y-PHOTOGRAPHER_POSITION.y,s.z-PHOTOGRAPHER_POSITION.z
+  ) <= 1.85);
+  assert.ok(firstContactIndex > 0);
+  assert.equal(assessFatalExposure(frames.slice(0, firstContactIndex),2,1.65,center).cause,null);
+  assert.equal(assessFatalExposure(frames.slice(0, firstContactIndex+1),2,.5,center).cause,'TOO CLOSE');
 });

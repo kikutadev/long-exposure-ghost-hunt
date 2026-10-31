@@ -3,7 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { decorateClassroom } from './atmosphere';
 import { formExposure, type DeathCause } from './shot';
 import { RiveGhost } from './rive-ghost';
-import { nearGhostSample } from './near-ghost-motion';
+import { nearGhostSample, PHOTOGRAPHER_POSITION } from './near-ghost-motion';
 
 export type GhostSample = { t: number; x: number; y: number; z: number; visible: boolean; size: number };
 const fixed = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -59,7 +59,7 @@ export class GhostWorld {
     this.renderer.toneMappingExposure = 1.36;
     this.scene.background = new THREE.Color(0x10181b);
     this.scene.fog = new THREE.FogExp2(0x10191b, .024);
-    this.camera.position.set(0, 1.65, 5.7);
+    this.camera.position.set(PHOTOGRAPHER_POSITION.x, PHOTOGRAPHER_POSITION.y, PHOTOGRAPHER_POSITION.z);
     this.pointAtYaw();
     this.buildRoom();
     this.atmosphere = decorateClassroom(this.scene);
@@ -440,7 +440,7 @@ export class GhostWorld {
 
   resetFatal() {
     this.fatal = null;
-    this.camera.position.set(0, 1.65, 5.7);
+    this.camera.position.set(PHOTOGRAPHER_POSITION.x, PHOTOGRAPHER_POSITION.y, PHOTOGRAPHER_POSITION.z);
     this.pointAtYaw();
   }
 

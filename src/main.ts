@@ -151,8 +151,10 @@ function die(cause: DeathCause) {
   deathCause = cause;
   currentResult = null;
   irisDirection = null;
-  iris.draw(0);
-  irisOpen = 0;
+  // Death is caused by the apparition, not by the lens shutter.
+  // Keep the blades open so the impact is visible inside the classroom.
+  iris.draw(1);
+  irisOpen = 1;
   shutter.classList.remove('pressed');
   game.classList.remove('fatal-warning');
   world.showExposure(capture.samples, exposureSeconds);
@@ -174,7 +176,7 @@ function endExposure(forced = false) {
   exposureSeconds = capture.elapsed(t, exposureLimit(act));
   const danger = fatalState();
   if (danger.cause || forced) {
-    die(danger.cause ?? (act === 2 ? 'TOO CLOSE' : 'OVEREXPOSED'));
+    die(danger.cause ?? 'OVEREXPOSED');
     return;
   }
   currentResult = shotState();
@@ -333,8 +335,8 @@ function frame(tMs: number) {
     }
     $('#exposure-value').innerHTML = `${exposureSeconds.toFixed(2)}<span>s</span>`;
     // The image is the exposure meter. No score or release instruction during a shot.
-    $('#signal-label').textContent = danger.warning ? (act === 2 ? 'IT IS CLOSE' : 'THE FILM IS BURNING') : 'EXPOSING';
-    sound.expose(exposureSeconds, act);
+    $('#signal-label').textContent = danger.warning ? (act === 2 ? 'IT IS COMING' : 'THE FILM IS BURNING') : 'EXPOSING';
+    sound.expose(exposureSeconds, act, capture.samples.at(-1)?.visible ?? true);
     if (phase === 'opening' && t - irisStart > .12) setPhase('exposing');
     if (phase !== 'dead' && exposureSeconds >= exposureLimit(act)) endExposure(true);
   }
