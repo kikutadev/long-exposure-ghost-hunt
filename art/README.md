@@ -55,7 +55,7 @@ Blender --background art/classroom-dress.blend --threads 3 --python art/build-mo
 
 第3幕の人物アニメーションは **Riveが顔・手・胴の2D動作を担当し、Three.jsが3D空間での位置・消失・写真・死亡判定を担当**する。現行画像の立体関節動作まではできないが、写真の質感を維持して連続変形できる。旧Blender 12フレーム方式は廃止し、その画像連番と生成コードはGit履歴にのみ残す。
 
-- 制作正本：`art/rive-ghost/scene.rml` と `art/rive-ghost/assets/{body,head,hand}.png`。`art/rive-ghost/build.py` からシーンを再生成できる。見た目の変更はRMLのキーフレームと分割画像を修正する。
+- 制作正本：`art/rive-ghost/prepare-assets.py` で元の `ghost-near.png` を**重複しない6部位**（胴・頭・袖・前へ伸ばす手・左右の髪）にマスク分離し、`art/rive-ghost/assets/` に書き出す。`art/rive-ghost/build.py` が編集可能な `scene.rml` を生成。再制作時は `python3 art/rive-ghost/prepare-assets.py && python3 art/rive-ghost/build.py` → Rive CLIビルド。変形は肩・手首・首・髪の付け根を支点にする。
 - コンパイル：`.qa/rive-bin/rive art/rive-ghost --verify` と `.qa/rive-bin/rive art/rive-ghost --once`、成果物 `art/rive-ghost/build/ghost-near-rive.riv` を `public/assets/ghost-near.riv` へコピー。プロジェクトのRive CLIバイナリがない環境では公式Rive CLIを使用する。
 - **スクリプトなし**のRive構成なので公開用の署名手順を要求しない。ゲームでは`@rive-app/canvas-advanced`で0〜1.65秒の演技を直接スクラブして描画し、CanvasTexture経由でWebGLカメラに含める。
 - 露光0.99〜1.03秒、1.34〜1.39秒に一瞬消え、それぞれ近距離に再出現。サンプル上も不可視なので露光計算と目視が食い違わない。消失中にシャッターを離した写真には直前の最後の像が感光痕跡として残る。

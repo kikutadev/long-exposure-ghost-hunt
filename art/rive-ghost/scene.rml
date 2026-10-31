@@ -1,1 +1,205 @@
-<Rive version="1" kind="fragment"><Artboard width="512" height="768" name="The One Who Watches" id="0:2"><Node x="172" y="259" name="HAND" id="0:21"><Image x="-172" y="-259" originX="0" originY="0" assetId="0:230" name="hand" id="0:121"/></Node><Node x="261" y="232" name="HEAD" id="0:22"><Image x="-261" y="-232" originX="0" originY="0" assetId="0:231" name="head" id="0:122"/></Node><Node x="256" y="384" name="TORSO" id="0:23"><Image x="-256" y="-384" originX="0" originY="0" assetId="0:232" name="body" id="0:123"/></Node><LinearAnimation name="Approach" fps="60" duration="99" id="0:6"><KeyedObject objectId="0:22"><KeyedProperty propertyKey="15"><KeyFrameDouble frame="0" value="-0.03" interpolationType="3"/><KeyFrameDouble frame="28" value="-0.03" interpolationType="3"/><KeyFrameDouble frame="46" value="0.025" interpolationType="3"/><KeyFrameDouble frame="68" value="0.1" interpolationType="3"/><KeyFrameDouble frame="84" value="0.18" interpolationType="3"/><KeyFrameDouble frame="99" value="0.25" interpolationType="3"/></KeyedProperty></KeyedObject><KeyedObject objectId="0:22"><KeyedProperty propertyKey="14"><KeyFrameDouble frame="0" value="232" interpolationType="3"/><KeyFrameDouble frame="28" value="232" interpolationType="3"/><KeyFrameDouble frame="46" value="229" interpolationType="3"/><KeyFrameDouble frame="68" value="219" interpolationType="3"/><KeyFrameDouble frame="84" value="211" interpolationType="3"/><KeyFrameDouble frame="99" value="197" interpolationType="3"/></KeyedProperty></KeyedObject><KeyedObject objectId="0:22"><KeyedProperty propertyKey="16"><KeyFrameDouble frame="0" value="1" interpolationType="3"/><KeyFrameDouble frame="46" value="1" interpolationType="3"/><KeyFrameDouble frame="68" value="1.015" interpolationType="3"/><KeyFrameDouble frame="84" value="1.035" interpolationType="3"/><KeyFrameDouble frame="99" value="1.045" interpolationType="3"/></KeyedProperty></KeyedObject><KeyedObject objectId="0:21"><KeyedProperty propertyKey="15"><KeyFrameDouble frame="0" value="-0.025" interpolationType="3"/><KeyFrameDouble frame="40" value="-0.025" interpolationType="3"/><KeyFrameDouble frame="63" value="-0.06" interpolationType="3"/><KeyFrameDouble frame="77" value="-0.1" interpolationType="3"/><KeyFrameDouble frame="89" value="-0.24" interpolationType="3"/><KeyFrameDouble frame="99" value="-0.4" interpolationType="3"/></KeyedProperty></KeyedObject><KeyedObject objectId="0:21"><KeyedProperty propertyKey="13"><KeyFrameDouble frame="0" value="172" interpolationType="3"/><KeyFrameDouble frame="48" value="172" interpolationType="3"/><KeyFrameDouble frame="68" value="164" interpolationType="3"/><KeyFrameDouble frame="84" value="157" interpolationType="3"/><KeyFrameDouble frame="99" value="142" interpolationType="3"/></KeyedProperty></KeyedObject><KeyedObject objectId="0:21"><KeyedProperty propertyKey="14"><KeyFrameDouble frame="0" value="259" interpolationType="3"/><KeyFrameDouble frame="50" value="259" interpolationType="3"/><KeyFrameDouble frame="68" value="252" interpolationType="3"/><KeyFrameDouble frame="84" value="229" interpolationType="3"/><KeyFrameDouble frame="99" value="204" interpolationType="3"/></KeyedProperty></KeyedObject><KeyedObject objectId="0:21"><KeyedProperty propertyKey="16"><KeyFrameDouble frame="0" value="1" interpolationType="3"/><KeyFrameDouble frame="49" value="1" interpolationType="3"/><KeyFrameDouble frame="70" value="1.04" interpolationType="3"/><KeyFrameDouble frame="85" value="1.22" interpolationType="3"/><KeyFrameDouble frame="99" value="1.49" interpolationType="3"/></KeyedProperty></KeyedObject><KeyedObject objectId="0:21"><KeyedProperty propertyKey="17"><KeyFrameDouble frame="0" value="1" interpolationType="3"/><KeyFrameDouble frame="49" value="1" interpolationType="3"/><KeyFrameDouble frame="70" value="1.03" interpolationType="3"/><KeyFrameDouble frame="85" value="1.18" interpolationType="3"/><KeyFrameDouble frame="99" value="1.45" interpolationType="3"/></KeyedProperty></KeyedObject><KeyedObject objectId="0:23"><KeyedProperty propertyKey="15"><KeyFrameDouble frame="0" value="0" interpolationType="3"/><KeyFrameDouble frame="54" value="0" interpolationType="3"/><KeyFrameDouble frame="75" value="-0.012" interpolationType="3"/><KeyFrameDouble frame="99" value="0.016" interpolationType="3"/></KeyedProperty></KeyedObject><KeyedObject objectId="0:23"><KeyedProperty propertyKey="14"><KeyFrameDouble frame="0" value="384" interpolationType="3"/><KeyFrameDouble frame="60" value="384" interpolationType="3"/><KeyFrameDouble frame="82" value="379" interpolationType="3"/><KeyFrameDouble frame="99" value="364" interpolationType="3"/></KeyedProperty></KeyedObject></LinearAnimation></Artboard><ImageAsset file="assets/hand.png" name="hand" id="0:230"/><ImageAsset file="assets/head.png" name="head" id="0:231"/><ImageAsset file="assets/body.png" name="body" id="0:232"/></Rive>
+<Rive version="1" kind="fragment">
+  <Artboard width="512" height="768" name="The One Who Watches" id="0:2" defaultStateMachineId="0:7" styleId="0:5">
+    <LayoutComponentStyle name="Artboard Style" id="0:5" />
+    <Node x="161" y="225" id="0:21" name="GRASP">
+      <Image x="-161" y="-225" originX="0" originY="0" assetId="0:230" id="0:121" name="grasp" />
+    </Node>
+    <Node x="175" y="150" id="0:22" name="SLEEVE">
+      <Image x="-175" y="-150" originX="0" originY="0" assetId="0:231" id="0:122" name="sleeve" />
+    </Node>
+    <Node x="259" y="169" id="0:23" name="HEAD">
+      <Image x="-259" y="-169" originX="0" originY="0" assetId="0:232" id="0:123" name="head" />
+    </Node>
+    <Node x="152" y="153" id="0:24" name="HAIR_LEFT">
+      <Image x="-152" y="-153" originX="0" originY="0" assetId="0:233" id="0:124" name="hair_left" />
+    </Node>
+    <Node x="358" y="153" id="0:25" name="HAIR_RIGHT">
+      <Image x="-358" y="-153" originX="0" originY="0" assetId="0:234" id="0:125" name="hair_right" />
+    </Node>
+    <Node x="256" y="384" id="0:26" name="BODY">
+      <Image x="-256" y="-384" originX="0" originY="0" assetId="0:235" id="0:126" name="body" />
+    </Node>
+    <LinearAnimation name="Approach" fps="60" duration="99" id="0:6">
+      <KeyedObject objectId="0:23">
+        <KeyedProperty propertyKey="15">
+          <KeyFrameDouble frame="0" value="-0.02" interpolationType="3" />
+          <KeyFrameDouble frame="31" value="-0.02" interpolationType="3" />
+          <KeyFrameDouble frame="49" value="0.02" interpolationType="3" />
+          <KeyFrameDouble frame="65" value="0.065" interpolationType="3" />
+          <KeyFrameDouble frame="78" value="0.1" interpolationType="3" />
+          <KeyFrameDouble frame="99" value="0.14" interpolationType="3" />
+        </KeyedProperty>
+      </KeyedObject>
+      <KeyedObject objectId="0:23">
+        <KeyedProperty propertyKey="14">
+          <KeyFrameDouble frame="0" value="169" interpolationType="3" />
+          <KeyFrameDouble frame="31" value="169" interpolationType="3" />
+          <KeyFrameDouble frame="50" value="167" interpolationType="3" />
+          <KeyFrameDouble frame="69" value="163" interpolationType="3" />
+          <KeyFrameDouble frame="88" value="159" interpolationType="3" />
+          <KeyFrameDouble frame="99" value="156" interpolationType="3" />
+        </KeyedProperty>
+      </KeyedObject>
+      <KeyedObject objectId="0:23">
+        <KeyedProperty propertyKey="13">
+          <KeyFrameDouble frame="0" value="259" interpolationType="3" />
+          <KeyFrameDouble frame="49" value="259" interpolationType="3" />
+          <KeyFrameDouble frame="74" value="257" interpolationType="3" />
+          <KeyFrameDouble frame="99" value="254" interpolationType="3" />
+        </KeyedProperty>
+      </KeyedObject>
+      <KeyedObject objectId="0:22">
+        <KeyedProperty propertyKey="15">
+          <KeyFrameDouble frame="0" value="0" interpolationType="3" />
+          <KeyFrameDouble frame="48" value="0" interpolationType="3" />
+          <KeyFrameDouble frame="66" value="-0.015" interpolationType="3" />
+          <KeyFrameDouble frame="79" value="-0.065" interpolationType="3" />
+          <KeyFrameDouble frame="90" value="-0.115" interpolationType="3" />
+          <KeyFrameDouble frame="99" value="-0.17" interpolationType="3" />
+        </KeyedProperty>
+      </KeyedObject>
+      <KeyedObject objectId="0:22">
+        <KeyedProperty propertyKey="14">
+          <KeyFrameDouble frame="0" value="150" interpolationType="3" />
+          <KeyFrameDouble frame="48" value="150" interpolationType="3" />
+          <KeyFrameDouble frame="66" value="148" interpolationType="3" />
+          <KeyFrameDouble frame="79" value="140" interpolationType="3" />
+          <KeyFrameDouble frame="90" value="133" interpolationType="3" />
+          <KeyFrameDouble frame="99" value="127" interpolationType="3" />
+        </KeyedProperty>
+      </KeyedObject>
+      <KeyedObject objectId="0:22">
+        <KeyedProperty propertyKey="13">
+          <KeyFrameDouble frame="0" value="175" interpolationType="3" />
+          <KeyFrameDouble frame="48" value="175" interpolationType="3" />
+          <KeyFrameDouble frame="75" value="173" interpolationType="3" />
+          <KeyFrameDouble frame="90" value="169" interpolationType="3" />
+          <KeyFrameDouble frame="99" value="165" interpolationType="3" />
+        </KeyedProperty>
+      </KeyedObject>
+      <KeyedObject objectId="0:21">
+        <KeyedProperty propertyKey="15">
+          <KeyFrameDouble frame="0" value="0" interpolationType="3" />
+          <KeyFrameDouble frame="50" value="0" interpolationType="3" />
+          <KeyFrameDouble frame="64" value="-0.01" interpolationType="3" />
+          <KeyFrameDouble frame="76" value="-0.065" interpolationType="3" />
+          <KeyFrameDouble frame="85" value="-0.15" interpolationType="3" />
+          <KeyFrameDouble frame="99" value="-0.28" interpolationType="3" />
+        </KeyedProperty>
+      </KeyedObject>
+      <KeyedObject objectId="0:21">
+        <KeyedProperty propertyKey="14">
+          <KeyFrameDouble frame="0" value="225" interpolationType="3" />
+          <KeyFrameDouble frame="49" value="225" interpolationType="3" />
+          <KeyFrameDouble frame="66" value="220" interpolationType="3" />
+          <KeyFrameDouble frame="78" value="214" interpolationType="3" />
+          <KeyFrameDouble frame="88" value="203" interpolationType="3" />
+          <KeyFrameDouble frame="99" value="191" interpolationType="3" />
+        </KeyedProperty>
+      </KeyedObject>
+      <KeyedObject objectId="0:21">
+        <KeyedProperty propertyKey="13">
+          <KeyFrameDouble frame="0" value="161" interpolationType="3" />
+          <KeyFrameDouble frame="49" value="161" interpolationType="3" />
+          <KeyFrameDouble frame="71" value="155" interpolationType="3" />
+          <KeyFrameDouble frame="84" value="147" interpolationType="3" />
+          <KeyFrameDouble frame="99" value="134" interpolationType="3" />
+        </KeyedProperty>
+      </KeyedObject>
+      <KeyedObject objectId="0:21">
+        <KeyedProperty propertyKey="16">
+          <KeyFrameDouble frame="0" value="1" interpolationType="3" />
+          <KeyFrameDouble frame="55" value="1" interpolationType="3" />
+          <KeyFrameDouble frame="75" value="1.03" interpolationType="3" />
+          <KeyFrameDouble frame="87" value="1.1" interpolationType="3" />
+          <KeyFrameDouble frame="99" value="1.22" interpolationType="3" />
+        </KeyedProperty>
+      </KeyedObject>
+      <KeyedObject objectId="0:21">
+        <KeyedProperty propertyKey="17">
+          <KeyFrameDouble frame="0" value="1" interpolationType="3" />
+          <KeyFrameDouble frame="55" value="1" interpolationType="3" />
+          <KeyFrameDouble frame="75" value="1.01" interpolationType="3" />
+          <KeyFrameDouble frame="87" value="1.07" interpolationType="3" />
+          <KeyFrameDouble frame="99" value="1.17" interpolationType="3" />
+        </KeyedProperty>
+      </KeyedObject>
+      <KeyedObject objectId="0:24">
+        <KeyedProperty propertyKey="15">
+          <KeyFrameDouble frame="0" value="0" interpolationType="3" />
+          <KeyFrameDouble frame="27" value="0" interpolationType="3" />
+          <KeyFrameDouble frame="43" value="-0.035" interpolationType="3" />
+          <KeyFrameDouble frame="58" value="0.045" interpolationType="3" />
+          <KeyFrameDouble frame="68" value="0.0" interpolationType="3" />
+          <KeyFrameDouble frame="78" value="-0.055" interpolationType="3" />
+          <KeyFrameDouble frame="89" value="0.06" interpolationType="3" />
+          <KeyFrameDouble frame="99" value="-0.025" interpolationType="3" />
+        </KeyedProperty>
+      </KeyedObject>
+      <KeyedObject objectId="0:24">
+        <KeyedProperty propertyKey="13">
+          <KeyFrameDouble frame="0" value="152" interpolationType="3" />
+          <KeyFrameDouble frame="35" value="152" interpolationType="3" />
+          <KeyFrameDouble frame="54" value="146" interpolationType="3" />
+          <KeyFrameDouble frame="67" value="155" interpolationType="3" />
+          <KeyFrameDouble frame="80" value="142" interpolationType="3" />
+          <KeyFrameDouble frame="94" value="157" interpolationType="3" />
+          <KeyFrameDouble frame="99" value="150" interpolationType="3" />
+        </KeyedProperty>
+      </KeyedObject>
+      <KeyedObject objectId="0:25">
+        <KeyedProperty propertyKey="15">
+          <KeyFrameDouble frame="0" value="0" interpolationType="3" />
+          <KeyFrameDouble frame="27" value="0" interpolationType="3" />
+          <KeyFrameDouble frame="46" value="0.028" interpolationType="3" />
+          <KeyFrameDouble frame="59" value="-0.05" interpolationType="3" />
+          <KeyFrameDouble frame="71" value="0.016" interpolationType="3" />
+          <KeyFrameDouble frame="81" value="0.065" interpolationType="3" />
+          <KeyFrameDouble frame="92" value="-0.06" interpolationType="3" />
+          <KeyFrameDouble frame="99" value="0.03" interpolationType="3" />
+        </KeyedProperty>
+      </KeyedObject>
+      <KeyedObject objectId="0:25">
+        <KeyedProperty propertyKey="13">
+          <KeyFrameDouble frame="0" value="358" interpolationType="3" />
+          <KeyFrameDouble frame="35" value="358" interpolationType="3" />
+          <KeyFrameDouble frame="55" value="363" interpolationType="3" />
+          <KeyFrameDouble frame="68" value="352" interpolationType="3" />
+          <KeyFrameDouble frame="81" value="368" interpolationType="3" />
+          <KeyFrameDouble frame="93" value="352" interpolationType="3" />
+          <KeyFrameDouble frame="99" value="360" interpolationType="3" />
+        </KeyedProperty>
+      </KeyedObject>
+      <KeyedObject objectId="0:26">
+        <KeyedProperty propertyKey="15">
+          <KeyFrameDouble frame="0" value="0" interpolationType="3" />
+          <KeyFrameDouble frame="57" value="0" interpolationType="3" />
+          <KeyFrameDouble frame="79" value="-0.007" interpolationType="3" />
+          <KeyFrameDouble frame="99" value="0.013" interpolationType="3" />
+        </KeyedProperty>
+      </KeyedObject>
+      <KeyedObject objectId="0:26">
+        <KeyedProperty propertyKey="14">
+          <KeyFrameDouble frame="0" value="384" interpolationType="3" />
+          <KeyFrameDouble frame="57" value="384" interpolationType="3" />
+          <KeyFrameDouble frame="81" value="382" interpolationType="3" />
+          <KeyFrameDouble frame="99" value="376" interpolationType="3" />
+        </KeyedProperty>
+      </KeyedObject>
+    </LinearAnimation>
+    <StateMachine name="Preview Acting" id="0:7">
+      <StateMachineLayer name="Acting" id="0:8">
+        <EntryState>
+          <StateTransition stateToId="0:12" />
+        </EntryState>
+        <AnimationState animationId="0:6" id="0:12" />
+      </StateMachineLayer>
+    </StateMachine>
+  </Artboard>
+  <ImageAsset file="assets/grasp.png" name="grasp" id="0:230" />
+  <ImageAsset file="assets/sleeve.png" name="sleeve" id="0:231" />
+  <ImageAsset file="assets/head.png" name="head" id="0:232" />
+  <ImageAsset file="assets/hair_left.png" name="hair_left" id="0:233" />
+  <ImageAsset file="assets/hair_right.png" name="hair_right" id="0:234" />
+  <ImageAsset file="assets/body.png" name="body" id="0:235" />
+</Rive>
