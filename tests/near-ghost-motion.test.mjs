@@ -11,6 +11,21 @@ test('early shutter release is safe and the ghost is still distant', () => {
   assert.ok(poses.every((p, i) => i === 0 || p.z > poses[i - 1].z));
 });
 
+test('first disappearance interrupts a viable shot and returns at a safe, closer location', () => {
+  for (const startTime of [0, 1.4, 4.8]) {
+    const samples = Array.from({length: 100}, (_,i) => {
+      const age = i / 100;
+      return {age, ...nearGhostSample(startTime + age, age)};
+    });
+    const firstDark = samples.find(s => !s.visible);
+    const firstReturn = samples.find(s => firstDark && s.age > firstDark.age && s.visible);
+    assert.ok(firstDark && firstDark.age >= .50 && firstDark.age < .60);
+    assert.ok(firstReturn && firstReturn.age < .70);
+    assert.equal(hasReachedPhotographer(firstReturn), false);
+    assert.ok(firstReturn.z > samples[Math.max(0, Math.round(firstDark.age * 100) - 1)].z + 1.4);
+  }
+});
+
 test('both disappearances are real; second reappearance is instant contact', () => {
   for (const startTime of [0, 2.3, 5.1]) {
     const history = Array.from({ length: 180 }, (_, i) => {

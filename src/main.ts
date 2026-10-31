@@ -336,7 +336,7 @@ function frame(tMs: number) {
     $('#exposure-value').innerHTML = `${exposureSeconds.toFixed(2)}<span>s</span>`;
     // The image is the exposure meter. No score or release instruction during a shot.
     $('#signal-label').textContent = danger.warning ? (act === 2 ? 'IT IS COMING' : 'THE FILM IS BURNING') : 'EXPOSING';
-    sound.expose(exposureSeconds, act, capture.samples.at(-1)?.visible ?? true);
+    sound.expose(exposureSeconds, act, capture.samples.at(-1));
     if (phase === 'opening' && t - irisStart > .12) setPhase('exposing');
     if (phase !== 'dead' && exposureSeconds >= exposureLimit(act)) endExposure(true);
   }

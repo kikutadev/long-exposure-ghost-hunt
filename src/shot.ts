@@ -28,7 +28,8 @@ export function formExposure(samples: readonly GhostSample[], act: number, secon
     visibleTime += dt;
     framing += dt * coverage;
     if (prior) {
-      motion += Math.hypot(p.x - prior.x, p.y - prior.y) * .5;
+      // Fast crossings move sharply, but a short, well-timed burst must remain photographable.
+      motion += Math.hypot(p.x - prior.x, p.y - prior.y) * (act === 1 ? .38 : .5);
       // An approaching face leaves nested silhouettes even without lateral motion.
       motion += Math.abs((p.height ?? 0) - (prior.height ?? 0)) * .6;
     }

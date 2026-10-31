@@ -25,14 +25,19 @@ export function hasReachedPhotographer(sample: GhostSample): boolean {
  */
 export function nearGhostSample(t: number, age: number): GhostSample {
   const startTime = t - age;
-  const firstBlink = .98 + .06 * Math.sin(startTime * 1.8);
-  const secondBlink = 1.33 + .07 * Math.sin(startTime * 1.17 + 1.4);
-  const firstReturn = firstBlink + .043;
-  const secondReturn = secondBlink + .047;
+  // The first impossible jump now happens while a good photograph is still
+  // possible. Its brief stop gives the player a moment to release.
+  const firstBlink = .55 + .035 * Math.sin(startTime * 1.8);
+  const secondBlink = 1.25 + .065 * Math.sin(startTime * 1.17 + 1.4);
+  const firstReturn = firstBlink + .058;
+  const secondReturn = secondBlink + .052;
   const vanished = (age >= firstBlink && age < firstReturn)
     || (age >= secondBlink && age < secondReturn);
-  const progress = Math.pow(Math.max(0, Math.min(age / 1.65, 1)), 2.2);
-  const naturalZ = -6.4 + progress * 10.9 + (age >= firstReturn ? .5 : 0);
+  // A sudden advance, then a 90ms unnatural pause, then a renewed rush.
+  const motionAge = age < firstReturn ? age
+    : age < firstReturn + .09 ? firstReturn : age - .09;
+  const progress = Math.pow(Math.max(0, Math.min(motionAge / 1.65, 1)), 2.2);
+  const naturalZ = -6.4 + progress * 10.9 + (age >= firstReturn ? 2.05 : 0);
   // Reappearing within arm's reach is an attack, not a warning pose.
   const z = age >= secondReturn
     ? Math.max(naturalZ, PHOTOGRAPHER_POSITION.z - 1.55)

@@ -260,14 +260,25 @@ export class GhostWorld {
   positionAt(t: number, exposureAge = 0): GhostSample {
     const a = this.act;
     if (a === 0) {
-      // A nearly motionless silhouette beside the notebook, not a wandering particle.
-      return { t, x: -.74 + .09 * Math.sin(t * .42), y: 1.57, z: -4.55, visible: true, size: 1.16 };
+      // Hold still, jerk beside the book, then become unsettlingly still again.
+      // The exposure sampler sees this movement, so the photograph can blur it.
+      const jerk = fixed((exposureAge - .47) / .085, 0, 1);
+      return {
+        t, x: -.86 + .14 * jerk + .02 * Math.sin(t * .4),
+        y: 1.55 + .03 * jerk,
+        z: -4.55 + .07 * jerk,
+        visible: true, size: 1.16
+      };
     }
     if (a === 1) {
       const phase = ((t + .15) % 2.6 + 2.6) % 2.6;
       // The chairs move first. A short, readable pass follows the physical cue.
       const active = phase >= .30 && phase < 1.17;
-      const pos = Math.max(0, Math.min(1, (phase - .30) / .87));
+      const u = fixed((phase - .30) / .87, 0, 1);
+      // Hesitate at the window, burst across the desks, then disappear by the door.
+      const pos = u < .19 ? u / .19 * .10
+        : u < .78 ? .10 + (u - .19) / .59 * .82
+        : .92 + (u - .78) / .22 * .08;
       return { t, x: 1.75 - pos * 3.50, y: 1.50 + .025 * Math.sin(t * 18), z: -4.45, visible: active, size: 1.07 };
     }
     return nearGhostSample(t, exposureAge);
@@ -289,8 +300,17 @@ export class GhostWorld {
 
   tick(dt: number, time: number, exposing: boolean, exposureAge = 0) {
     const glitch = (Math.sin(time * 5.2) + Math.sin(time * 12.7) * .4) * .09;
-    this.flicker.intensity = (this.act === 2 ? 2.2 : 5) + glitch;
-    this.frontFluorescent.emissiveIntensity = (this.act === 2 ? .24 : .68) + Math.max(0, glitch);
+    // Brief dips create a perceptible silence/impact pair. They use the same
+    // exposure clock as the ghost; no unrelated fullscreen flashes.
+    const firstDip = exposing && this.act === 0 && exposureAge >= .40 && exposureAge < .49;
+    const fastSample = this.act === 1 ? this.positionAt(time, exposureAge) : null;
+    const fastDip = exposing && fastSample?.visible && Math.abs(fastSample.x) < .55;
+    const nearSample = this.act === 2 && exposing ? this.positionAt(time, exposureAge) : null;
+    const nearDip = nearSample && !nearSample.visible;
+    const dim = firstDip ? .46 : fastDip ? .62 : nearDip ? .23 : 1;
+    this.flicker.intensity = ((this.act === 2 ? 2.2 : 5) + glitch) * dim;
+    this.frontFluorescent.emissiveIntensity = Math.max(.03,
+      ((this.act === 2 ? .24 : .68) + Math.max(0, glitch)) * dim);
     // bpy-authored motion clips. Three.js only chooses WHEN a physical event happens.
     // Local time is stable across replays and is coupled to the ghost's crossing.
     const pageCycle = ((time - .55) % 4.1 + 4.1) % 4.1;

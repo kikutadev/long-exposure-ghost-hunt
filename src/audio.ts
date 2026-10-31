@@ -5,6 +5,8 @@ export class Sound {
   private lastFilmTick = -1;
   private nextApproachStep = 0;
   private previousPresenceVisible = true;
+  private firstJerkPlayed = false;
+  private fastCrossed = false;
   get isEnabled() { return this.enabled; }
   toggle() { this.enabled = !this.enabled; if (this.enabled) this.start(); else this.pause(); }
   start() {
@@ -93,7 +95,23 @@ export class Sound {
     src.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
     src.start();
   }
-  expose(seconds: number, act: number, presenceVisible = true) {
+  expose(seconds: number, act: number, presence?: { visible: boolean; x: number }) {
+    const presenceVisible = presence?.visible ?? true;
+    if (act === 0 && seconds >= .48 && !this.firstJerkPlayed) {
+      this.firstJerkPlayed = true;
+      // A paper-thin pause breaks with a wooden chair impact.
+      this.noise(.09, .030, 225);
+      this.tone(112, .12, .025, 'triangle', 62);
+    }
+    if (act === 1) {
+      if (!presenceVisible) this.fastCrossed = false;
+      else if (!this.fastCrossed && Math.abs(presence?.x ?? 2) < .47) {
+        this.fastCrossed = true;
+        // The passing figure crosses the photographer's axis now.
+        this.noise(.10, .043, 370);
+        this.tone(136, .075, .024, 'triangle', 64);
+      }
+    }
     // Mechanical transport / approaching pressure, not a correct-time chime.
     if (act === 2 && this.previousPresenceVisible && !presenceVisible) {
       // Use actual disappearance, not a fixed clock; every approach may differ.
@@ -101,6 +119,8 @@ export class Sound {
       this.tone(63, .12, .023, 'triangle', 36);
     }
     this.previousPresenceVisible = presenceVisible;
+    // The brief missing ghost also interrupts the camera's film transport.
+    if (act === 2 && !presenceVisible) return;
     const tick = Math.floor(seconds * (act === 2 ? 5 + seconds * 3 : 7));
     if (tick === this.lastFilmTick) return;
     this.lastFilmTick = tick;
@@ -121,6 +141,8 @@ export class Sound {
     this.lastFilmTick = -1;
     this.nextApproachStep = 0;
     this.previousPresenceVisible = true;
+    this.firstJerkPlayed = false;
+    this.fastCrossed = false;
     this.tone(245, .11, .025, 'sawtooth', 410);
     this.noise(.08, .026);
   }
