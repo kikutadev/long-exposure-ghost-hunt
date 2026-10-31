@@ -34,6 +34,7 @@ export class GhostWorld {
   private sprites: THREE.Sprite[] = [];
   private nearGhost = new RiveGhost();
   private nearGhostEnabled = false;
+  private nearPoseSprites: THREE.Sprite[] = [];
   private recognizedAt: number | null = null;
   private flicker: THREE.PointLight;
   private frontFluorescent!: THREE.MeshStandardMaterial;
@@ -78,6 +79,9 @@ export class GhostWorld {
     const loader = new THREE.TextureLoader();
     const names = ['ghost-base.png', 'ghost-fast.png', 'ghost-near.png'];
     this.textures = await Promise.all(names.map(n => loader.loadAsync(`${import.meta.env.BASE_URL}assets/${n}`)));
+    const poseTextures = await Promise.all(['recognition', 'attack'].map(
+      pose => loader.loadAsync(`${import.meta.env.BASE_URL}assets/ghost-near-${pose}.webp`)
+    ));
     try {
       await this.nearGhost.load(import.meta.env.BASE_URL + 'assets/ghost-near.riv');
       this.nearGhostEnabled = true;
@@ -135,6 +139,12 @@ export class GhostWorld {
         this.sprites.push(sprite);
       }
     }
+    this.nearPoseSprites = poseTextures.map(texture => {
+      texture.colorSpace = THREE.SRGBColorSpace;
+      const sprite = this.makeGhostSprite(texture);
+      sprite.renderOrder = 11;
+      return sprite;
+    });
     this.nearGhost.reset();
     this.updateViewport();
   }
@@ -370,7 +380,7 @@ export class GhostWorld {
     if (!exposing && this.photoWasExposing) { this.hideGhosts(); this.photoWasExposing = false; }
   }
 
-  hideGhosts() { this.sprites.forEach(s => { s.visible = false; }); }
+  hideGhosts() { this.sprites.forEach(s => { s.visible = false; }); this.nearPoseSprites.forEach(s => { s.visible = false; }); }
 
   showExposure(samples: GhostSample[], exposureSeconds: number, frozenPhoto = false) {
     this.photoWasExposing = true;
@@ -423,8 +433,31 @@ export class GhostWorld {
     // Once the presence notices the lens it becomes less spectral and more
     // physically threatening. The safe ~0.7s exposure is unaffected.
     const imminent = this.act === 2 ? Math.pow(fixed((exposureSeconds - 1.08) / .5, 0, 1), 1.5) : 0;
-    (main.material as THREE.SpriteMaterial).opacity = Math.min(.98, strength * .9 + imminent * .36);
-    main.visible = primary.visible;
+    const opacity = Math.min(.98, strength * .9 + imminent * .36);
+    if (this.act === 2 && this.recognizedAt !== null) {
+      // Distinct camera-facing poses are essential: geometry-free Rive warping
+      // cannot invent a new face angle or realistic foreshortened fingers.
+      const reaction = exposureSeconds - this.recognizedAt;
+      const seen = fixed(reaction / .12, 0, 1);
+      const strike = fixed((reaction - .32) / .18, 0, 1);
+      (main.material as THREE.SpriteMaterial).opacity = opacity * (1 - seen);
+      main.visible = primary.visible && seen < 1;
+      const [recognition, attack] = this.nearPoseSprites;
+      for (const sprite of [recognition, attack]) {
+        sprite.position.copy(main.position);
+        sprite.scale.copy(main.scale);
+      }
+      // The enlarged palm sits high in the portrait. Shift the attack pose
+      // below the eye line so its HAND, not its knees, approaches the lens.
+      attack.position.y -= .72 * strike;
+      (recognition.material as THREE.SpriteMaterial).opacity = opacity * seen * (1 - strike);
+      (attack.material as THREE.SpriteMaterial).opacity = opacity * seen * strike;
+      recognition.visible = primary.visible && seen > 0 && strike < 1;
+      attack.visible = primary.visible && strike > 0;
+    } else {
+      (main.material as THREE.SpriteMaterial).opacity = opacity;
+      main.visible = primary.visible;
+    }
     if (this.act === 2) this.nearGhost.renderAt(this.recognizedAt === null ? Math.min(exposureSeconds,.5) : Math.min(1.65,.5 + Math.max(0,exposureSeconds - this.recognizedAt) * 2.1));
 
     // Only moving ghosts leave a noticeable trail; ghosts that stand still
@@ -465,16 +498,30 @@ export class GhostWorld {
     this.camera.position.copy(this.fatal.origin);
     this.camera.quaternion.copy(this.fatal.quaternion);
     if (this.fatal.cause === 'TOO CLOSE') {
-      // The final pose strikes as the camera starts to fall.
-      this.nearGhost.renderAt(1.65, true);
-      this.sprites[2 * 6].position.z = this.fatal.ghostZ + .45 * rush;
-      // The viewpoint falls while the entity remains in the same classroom.
+      // The physical attack frame persists during impact. Its foreshortened
+      // fingers, rather than a scaled idle sprite, rush into the lens.
+      const idle = this.sprites[2 * 6];
+      idle.visible = false;
+      this.nearPoseSprites[0].visible = false;
+      const attack = this.nearPoseSprites[1];
+      const grab = fixed(elapsed / .24, 0, 1);
+      const fall = fixed((elapsed - .24) / .52, 0, 1);
+      const fallEase = fall * fall * (3 - 2 * fall);
+      // Keep the hand and stare framed for the first quarter-second.
+      attack.visible = elapsed < .55;
+      (attack.material as THREE.SpriteMaterial).opacity = .98 * (1 - fixed((elapsed - .38) / .17, 0, 1));
+      attack.position.copy(idle.position);
+      attack.position.y -= .76;
+      attack.position.z = this.fatal.ghostZ + .22 * grab;
+      attack.scale.copy(idle.scale);
+      attack.scale.multiplyScalar(1 + .11 * grab);
+      // Only after contact does the camera topple toward the floor.
       if (!reducedMotion) {
-        this.camera.position.y -= 1.05 * rush;
-        this.camera.position.x += .36 * rush;
-        this.camera.position.z += .24 * rush;
-        this.camera.rotateZ(-.34 * rush);
-        this.camera.rotateX(-.18 * rush);
+        this.camera.position.y -= 1.05 * fallEase;
+        this.camera.position.x += .36 * fallEase;
+        this.camera.position.z += .24 * fallEase;
+        this.camera.rotateZ(-.34 * fallEase);
+        this.camera.rotateX(-.18 * fallEase);
       }
     } else {
       // A corrupted exposure reverses the camera/subject relationship.

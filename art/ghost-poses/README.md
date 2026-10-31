@@ -15,7 +15,18 @@
 | 認識（顔を上げ、見る） | `generated/recognition.png`（1024×1536） | `f7edf2722789b4bed4c7ae0363925a00713ea0d182c600426b3fc2a3d2b43a5b` | https://chatgpt.com/g/g-p-6ad3c9e81f0081918a0b02e84d2c16b4-parallel/c/6ae602f0-f7f8-83ee-8ed3-76005581b189 |
 | 襲撃（レンズに伸ばす手） | `generated/attack.png`（1024×1536） | `3cae2d7b2cbf6c1e4ae2469ed095dac8dbf529589830a46e9f54d5d0a2bb6acb` | https://chatgpt.com/g/g-p-6ad3c9e81f0081918a0b02e84d2c16b4-parallel/c/6ae60288-3ec8-83e8-8e68-9f9b0ac64f7d |
 
-**品質確認・残課題**：既存待機画像と新規2枚を横並びにして目視確認。顔・衣装の特徴は概ね維持し、認識と襲撃は確実に異なる姿勢。ただし両方とも**RGBA形式だがアルファは全画素255で、黒背景が不透明**。直接Three.jsに貼れば四角い黒背景になる。背景のマスク・色調統一を行い、実ゲーム画面で確認するまでは採用不可。現時点で公開版 `main` は変更していない。
+**2026-11-01 採用手順と実画面検証**：VM1生成の黒背景2枚を `remove-background.swift`（macOS Vision / `VNGenerateForegroundInstanceMaskRequest`）で前景分離し、透明PNG経由でアルファWebP（768×1152）に縮小。公開用は `public/assets/ghost-near-recognition.webp`（約170KB）および `public/assets/ghost-near-attack.webp`（約194KB）。人物の髪の輪郭と手は透過状態・教室背景の両方で確認した。3幕の露光中に認識像が現れ、近距離の攻撃は手と顔がフレームを占め、死亡時にカメラが倒れる。生成画像の衣装は待機素材と完全一致ではなく、同じデザインとして許容する暫定判断。iPhone/Android実機の検証は未実施。
+
+再生成コマンド：
+
+```bash
+for pose in recognition attack; do
+  swift art/ghost-poses/remove-background.swift "art/ghost-poses/generated/$pose.png" "art/ghost-poses/generated/$pose-cutout.png"
+  ffmpeg -y -i "art/ghost-poses/generated/$pose-cutout.png" -vf 'scale=768:1152:flags=lanczos' -c:v libwebp -compression_level 6 -quality 90 "public/assets/ghost-near-$pose.webp"
+done
+```
+
+上記の `*-cutout.png` は再生成可能な中間素材であり、公開/コミットには含めない。
 
 **原因と修正箇所**：VM3の自動化は「添付候補の選択」と「Sendへのクリック」が実際の投稿成立に至らなかった。VM1でCDP経由の `Attach photos or videos` ファイル入力を使い、最後に `Page.bringToFront` とマウス押下/解放を送ると会話投稿・生成できた。画像生成サーバーそのものの障害ではなかった。送信未確認のジョブで繰り返し送ることは避けた。
 
