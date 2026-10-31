@@ -23,7 +23,7 @@ export function formExposure(samples: readonly GhostSample[], act: number, secon
     const area = p.width && p.height ? clamp(p.width * p.height / .12, .15, 1.35) : 1;
     const weight = dt * coverage * area;
     weights.push(weight);
-    energy += weight * [1, 3.4, 1.65][act];
+    energy += weight * [1, 2.65, 1.65][act];
     if (!coverage) { prior = null; continue; }
     visibleTime += dt;
     framing += dt * coverage;

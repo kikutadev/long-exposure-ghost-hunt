@@ -260,13 +260,15 @@ export class GhostWorld {
   positionAt(t: number, exposureAge = 0): GhostSample {
     const a = this.act;
     if (a === 0) {
-      return { t, x: -.45 + .7 * Math.sin(t * .9), y: 1.6 + .06 * Math.sin(t * 1.7), z: -5.7, visible: true, size: 1 };
+      // A nearly motionless silhouette beside the notebook, not a wandering particle.
+      return { t, x: -.74 + .09 * Math.sin(t * .42), y: 1.57, z: -4.55, visible: true, size: 1.16 };
     }
     if (a === 1) {
       const phase = ((t + .15) % 2.6 + 2.6) % 2.6;
-      const active = phase < 1.05;
-      const pos = Math.min(1, phase / 1.05);
-      return { t, x: 2.4 - pos * 4.8, y: 1.50 + .03 * Math.sin(t * 18), z: -5.4, visible: active, size: .92 };
+      // The chairs move first. A short, readable pass follows the physical cue.
+      const active = phase >= .30 && phase < 1.17;
+      const pos = Math.max(0, Math.min(1, (phase - .30) / .87));
+      return { t, x: 1.75 - pos * 3.50, y: 1.50 + .025 * Math.sin(t * 18), z: -4.45, visible: active, size: 1.07 };
     }
     return nearGhostSample(t, exposureAge);
   }
@@ -354,9 +356,21 @@ export class GhostWorld {
       accumulated += film.weights[i];
       if (accumulated >= total / 2) { mid = i; break; }
     }
-    // Slow/crossing spirits record the most representative frame. The near
-    // spirit must actually approach the lens, not remain a weighted ghost far
-    // behind the desks while the fatal timer advances.
+    // Act 2 is a brief crossing. Pick the best *actually exposed* frame for
+    // the primary silhouette, rather than a half-clipped weighted midpoint.
+    // The old samples still form the blur/afterimage and quality calculation.
+    if (this.act === 1) {
+      let bestScore = -1;
+      for (let i = 0; i < samples.length; i++) {
+        const sample = samples[i];
+        if (!sample.visible || film.weights[i] <= 0) continue;
+        const projection = this.project(sample);
+        if (!projection.inView) continue;
+        const score = (projection.coverage ?? 0) * (1 - .45 * Math.min(1, Math.abs(projection.x)));
+        if (score > bestScore) { bestScore = score; mid = i; }
+      }
+    }
+    // The near spirit must actually advance toward the lens.
     if (this.act === 2) mid = samples.length - 1;
     let primary = samples[mid];
     // While watching, the two disappearances are truly blank. On film, an
