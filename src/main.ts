@@ -5,7 +5,7 @@ import './death.css';
 import { GAME_MARKUP } from './view';
 import { Sound } from './audio';
 import { ShutterIris } from './iris';
-import { evaluateShot, assessFatalExposure, exposureLimit, type DeathCause, type ShotResult } from './shot';
+import { evaluateShot, assessFatalExposure, exposureLimit, formExposure, type DeathCause, type ShotResult } from './shot';
 import { bindCameraInput } from './input';
 import { ExposureSession } from './exposure-session';
 import { DeathScreen } from './death-screen';
@@ -213,6 +213,7 @@ function beginExposure() {
   $('#signal-label').textContent = 'SCANNING...';
   const now = performance.now() / 1000;
   capture.begin(now, worldTime);
+  world.resetObservation();
   exposureSeconds = 0;
   irisDirection = 'open'; irisStart = now;
   iris.draw(0); irisOpen = 0;
@@ -326,6 +327,14 @@ function frame(tMs: number) {
   if (exposing) {
     exposureSeconds = capture.elapsed(t, 2.4);
     capture.collect(t, exposureLimit(act), (time, age) => world.positionAt(time, age));
+    if (act === 2 && world.observationAge === null) {
+      const film = formExposure(capture.samples, act, exposureSeconds, sample => world.project(sample));
+      // Recognition is caused by a readable exposure, not a scripted second.
+      // Once it sees the photographer, the ghost freezes before attacking.
+      if (film.quality >= 45 && film.visibleTime >= .18 && world.recognizeAt(capture.recordedAge)) {
+        sound.recognized();
+      }
+    }
     world.showExposure(capture.samples, capture.recordedAge);
     const danger = fatalState();
     game.classList.toggle('fatal-warning', danger.warning);
@@ -336,7 +345,8 @@ function frame(tMs: number) {
     $('#exposure-value').innerHTML = `${exposureSeconds.toFixed(2)}<span>s</span>`;
     // The image is the exposure meter. No score or release instruction during a shot.
     $('#signal-label').textContent = danger.warning ? (act === 2 ? 'IT IS COMING' : 'THE FILM IS BURNING') : 'EXPOSING';
-    sound.expose(exposureSeconds, act, capture.samples.at(-1));
+    sound.expose(exposureSeconds, act, capture.samples.at(-1),
+      act === 2 && world.observationAge !== null && exposureSeconds - world.observationAge < .15);
     if (phase === 'opening' && t - irisStart > .12) setPhase('exposing');
     if (phase !== 'dead' && exposureSeconds >= exposureLimit(act)) endExposure(true);
   }

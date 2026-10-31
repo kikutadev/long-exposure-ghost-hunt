@@ -1,57 +1,46 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  nearGhostSample, hasReachedPhotographer, distanceToPhotographer,
-  STRIKE_DISTANCE
-} from '../src/near-ghost-motion.ts';
+import {nearGhostSample, hasReachedPhotographer, distanceToPhotographer, STRIKE_DISTANCE} from '../src/near-ghost-motion.ts';
 
-test('early shutter release is safe and the ghost is still distant', () => {
-  const poses = [.2, .55, .8].map(age => nearGhostSample(4 + age, age));
-  assert.ok(poses.every(p => p.visible && !hasReachedPhotographer(p)));
-  assert.ok(poses.every((p, i) => i === 0 || p.z > poses[i - 1].z));
+test('before recognition, subject approaches slowly and can still reach camera', () => {
+  assert.ok([.2,.5,.8].every(age => !hasReachedPhotographer(nearGhostSample(age,age))));
+  assert.ok(hasReachedPhotographer(nearGhostSample(2,2)));
 });
 
-test('first disappearance interrupts a viable shot and returns at a safe, closer location', () => {
-  for (const startTime of [0, 1.4, 4.8]) {
-    const samples = Array.from({length: 100}, (_,i) => {
-      const age = i / 100;
-      return {age, ...nearGhostSample(startTime + age, age)};
-    });
-    const firstDark = samples.find(s => !s.visible);
-    const firstReturn = samples.find(s => firstDark && s.age > firstDark.age && s.visible);
-    assert.ok(firstDark && firstDark.age >= .50 && firstDark.age < .60);
-    assert.ok(firstReturn && firstReturn.age < .70);
-    assert.equal(hasReachedPhotographer(firstReturn), false);
-    assert.ok(firstReturn.z > samples[Math.max(0, Math.round(firstDark.age * 100) - 1)].z + 1.4);
+test('recognition makes the subject stop, then disappear and reappear closer', () => {
+  const at = .64;
+  const frozen = [at+.02,at+.1,at+.14].map(age => nearGhostSample(age,age,at));
+  assert.ok(frozen.every(s => s.visible && s.z === frozen[0].z));
+  const vanished = nearGhostSample(at+.18,at+.18,at);
+  const returned = nearGhostSample(at+.23,at+.23,at);
+  assert.equal(vanished.visible, false);
+  assert.equal(returned.visible,true);
+  assert.ok(returned.z > frozen[0].z + 2);
+  assert.equal(hasReachedPhotographer(returned),false);
+});
+
+test('second apparition contacts and kills immediately, even outside the viewfinder', () => {
+  for (const at of [.43,.65,.94]) {
+    const lastGap = nearGhostSample(at+.54,at+.54,at);
+    const strike = nearGhostSample(at+.59,at+.59,at);
+    assert.equal(lastGap.visible,false);
+    assert.equal(strike.visible,true);
+    assert.ok(distanceToPhotographer(strike) <= STRIKE_DISTANCE);
+    assert.equal(hasReachedPhotographer(strike),true);
   }
 });
 
-test('both disappearances are real; second reappearance is instant contact', () => {
-  for (const startTime of [0, 2.3, 5.1]) {
-    const history = Array.from({ length: 180 }, (_, i) => {
-      const age = i / 100;
-      return nearGhostSample(startTime + age, age);
-    });
-    const vanishingEdges = history.filter((s, i) => i > 0 && !s.visible && history[i-1].visible);
-    assert.equal(vanishingEdges.length, 2);
-    assert.ok(history.every(s => !s.visible || !hasReachedPhotographer(s) || distanceToPhotographer(s) <= STRIKE_DISTANCE));
-    const strikeIndex = history.findIndex(hasReachedPhotographer);
-    assert.ok(strikeIndex > 0 && strikeIndex < history.length);
-    assert.equal(history[strikeIndex - 1].visible, false, 'reappearance must be the lethal event');
-  }
-});
-
-test('the approach varies by shutter start time, not one fixed fatal second', () => {
-  const firstLethalAge = startTime => {
-    for (let i = 0; i < 180; i++) {
-      const age = i / 100;
-      if (hasReachedPhotographer(nearGhostSample(startTime + age, age))) return age;
+test('photo recognition timing changes the danger window', () => {
+  const firstLethalAge = recognizedAt => {
+    for(let i=1;i<240;i++){
+      const age=i/100;
+      if(hasReachedPhotographer(nearGhostSample(age,age,recognizedAt)))return age;
     }
-    throw new Error('No contact');
+    throw Error('No contact');
   };
-  assert.ok(Math.abs(firstLethalAge(0) - firstLethalAge(4)) >= .05);
+  assert.ok(firstLethalAge(.9) - firstLethalAge(.45) > .40);
 });
 
-test('the same shutter history produces the same motion', () => {
-  assert.deepEqual(nearGhostSample(8.4,.74),nearGhostSample(8.4,.74));
+test('same recognition history gives identical ghost position', () => {
+  assert.deepEqual(nearGhostSample(8.4,.74,.55),nearGhostSample(8.4,.74,.55));
 });

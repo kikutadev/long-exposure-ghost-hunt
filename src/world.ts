@@ -34,6 +34,7 @@ export class GhostWorld {
   private sprites: THREE.Sprite[] = [];
   private nearGhost = new RiveGhost();
   private nearGhostEnabled = false;
+  private recognizedAt: number | null = null;
   private flicker: THREE.PointLight;
   private frontFluorescent!: THREE.MeshStandardMaterial;
   private book: THREE.Mesh;
@@ -250,12 +251,23 @@ export class GhostWorld {
   setAct(act: number) {
     this.resetFatal();
     this.act = act;
+    this.recognizedAt = null;
     this.nearGhost.reset();
     this.yaw = act === 1 ? -.13 : act === 2 ? 0 : -.07;
     this.pitch = -.025;
     this.pointAtYaw();
     this.hideGhosts();
   }
+
+  resetObservation() { this.recognizedAt = null; }
+
+  recognizeAt(exposureAge: number) {
+    if (this.act !== 2 || this.recognizedAt !== null) return false;
+    this.recognizedAt = exposureAge;
+    return true;
+  }
+
+  get observationAge() { return this.recognizedAt; }
 
   positionAt(t: number, exposureAge = 0): GhostSample {
     const a = this.act;
@@ -281,7 +293,7 @@ export class GhostWorld {
         : .92 + (u - .78) / .22 * .08;
       return { t, x: 1.75 - pos * 3.50, y: 1.50 + .025 * Math.sin(t * 18), z: -4.45, visible: active, size: 1.07 };
     }
-    return nearGhostSample(t, exposureAge);
+    return nearGhostSample(t, exposureAge, this.recognizedAt);
   }
 
   project(sample: GhostSample) {
@@ -306,8 +318,10 @@ export class GhostWorld {
     const fastSample = this.act === 1 ? this.positionAt(time, exposureAge) : null;
     const fastDip = exposing && fastSample?.visible && Math.abs(fastSample.x) < .55;
     const nearSample = this.act === 2 && exposing ? this.positionAt(time, exposureAge) : null;
+    const watching = this.recognizedAt !== null && exposing && this.act === 2;
+    const heldBreath = watching && exposureAge - this.recognizedAt! < .15;
     const nearDip = nearSample && !nearSample.visible;
-    const dim = firstDip ? .46 : fastDip ? .62 : nearDip ? .23 : 1;
+    const dim = firstDip ? .46 : fastDip ? .62 : nearDip ? .23 : heldBreath ? .72 : 1;
     this.flicker.intensity = ((this.act === 2 ? 2.2 : 5) + glitch) * dim;
     this.frontFluorescent.emissiveIntensity = Math.max(.03,
       ((this.act === 2 ? .24 : .68) + Math.max(0, glitch)) * dim);
@@ -411,7 +425,7 @@ export class GhostWorld {
     const imminent = this.act === 2 ? Math.pow(fixed((exposureSeconds - 1.08) / .5, 0, 1), 1.5) : 0;
     (main.material as THREE.SpriteMaterial).opacity = Math.min(.98, strength * .9 + imminent * .36);
     main.visible = primary.visible;
-    if (this.act === 2) this.nearGhost.renderAt(exposureSeconds);
+    if (this.act === 2) this.nearGhost.renderAt(this.recognizedAt === null ? Math.min(exposureSeconds,.5) : Math.min(1.65,.5 + Math.max(0,exposureSeconds - this.recognizedAt) * 2.1));
 
     // Only moving ghosts leave a noticeable trail; ghosts that stand still
     // become clearer rather than appearing as an opaque luminous blob.

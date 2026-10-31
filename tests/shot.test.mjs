@@ -125,10 +125,10 @@ test('prolonged shutter hold always kills even outside the frame', async () => {
 
 test('second teleport immediately materializes inside the kill radius', async () => {
   const {assessFatalExposure} = await import('../src/shot.ts');
-  const startTime = 4;
+  const recognizedAt = .65;
   const frames = Array.from({length: 54},(_,i) => {
     const age = (i+1)/30;
-    return nearGhostSample(startTime+age, age);
+    return nearGhostSample(4+age, age, recognizedAt);
   });
   const firstContactIndex = frames.findIndex(s => s.visible && Math.hypot(
     s.x-PHOTOGRAPHER_POSITION.x,s.y-PHOTOGRAPHER_POSITION.y,s.z-PHOTOGRAPHER_POSITION.z

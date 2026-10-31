@@ -95,7 +95,7 @@ export class Sound {
     src.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
     src.start();
   }
-  expose(seconds: number, act: number, presence?: { visible: boolean; x: number }) {
+  expose(seconds: number, act: number, presence?: { visible: boolean; x: number }, heldBreath = false) {
     const presenceVisible = presence?.visible ?? true;
     if (act === 0 && seconds >= .48 && !this.firstJerkPlayed) {
       this.firstJerkPlayed = true;
@@ -120,7 +120,7 @@ export class Sound {
     }
     this.previousPresenceVisible = presenceVisible;
     // The brief missing ghost also interrupts the camera's film transport.
-    if (act === 2 && !presenceVisible) return;
+    if (act === 2 && (!presenceVisible || heldBreath)) return;
     const tick = Math.floor(seconds * (act === 2 ? 5 + seconds * 3 : 7));
     if (tick === this.lastFilmTick) return;
     this.lastFilmTick = tick;
@@ -147,6 +147,11 @@ export class Sound {
     this.noise(.08, .026);
   }
   close() { this.noise(.065, .11); this.tone(190, .08, .13, 'triangle', 47); this.tone(1320, .035, .065, 'square', 520); }
+  recognized() {
+    // A short stop in the film transport, then a single dry click.
+    this.noise(.035, .032, 620);
+    this.tone(95, .08, .024, 'triangle', 58);
+  }
   detected() { this.tone(430, .24, .036, 'sine', 650); this.tone(880, .24, .024, 'sine', 1000); }
   miss() { this.tone(162, .24, .035, 'triangle', 94); }
   death() {
