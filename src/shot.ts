@@ -44,7 +44,7 @@ export function formExposure(samples: readonly GhostSample[], act: number, secon
 
 export function evaluateShot(samples: readonly GhostSample[], act: number, exposureSeconds: number, project: (sample: GhostSample) => Projection): ShotResult {
   const film = formExposure(samples, act, exposureSeconds, project);
-  const tooLate = act === 2 && exposureSeconds >= 1.65;
+  const tooLate = act === 2 && exposureSeconds >= exposureLimit(act);
   const quality = tooLate ? 0 : film.quality;
   const success = quality >= 45 && film.visibleTime >= .10;
   let label = success ? (quality >= 75 ? 'CRYSTAL CLEAR' : 'GHOST CAPTURED') : 'TOO DARK';
@@ -61,6 +61,9 @@ export function evaluateShot(samples: readonly GhostSample[], act: number, expos
 
 export type DeathCause = 'OVEREXPOSED' | 'TOO CLOSE';
 
+/** The same exposure deadline governs capture and fatal evaluation. */
+export const exposureLimit = (act: number) => act === 2 ? 1.65 : 2.4;
+
 /** Fatal danger is derived from the same film response that draws the photograph. */
 export function assessFatalExposure(
   samples: readonly GhostSample[],
@@ -69,8 +72,8 @@ export function assessFatalExposure(
   project: (sample: GhostSample) => Projection
 ): { cause: DeathCause | null; warning: boolean } {
   const film = formExposure(samples, act, seconds, project);
-  const tooClose = act === 2 && seconds >= 1.65;
-  const openTooLong = act !== 2 && seconds >= 2.4;
+  const tooClose = act === 2 && seconds >= exposureLimit(act);
+  const openTooLong = act !== 2 && seconds >= exposureLimit(act);
   const fatalLight = act !== 2 && film.visibleTime >= .1 && film.bleach >= .75;
   return {
     cause: tooClose ? 'TOO CLOSE' : (openTooLong || fatalLight) ? 'OVEREXPOSED' : null,

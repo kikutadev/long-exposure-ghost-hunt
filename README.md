@@ -16,6 +16,7 @@ SLAPJAM #2（テーマ **Speed**）向け、スマホ縦画面の短編3D心霊�
 
 - [docs/SPEC.md](docs/SPEC.md)：現行のゲーム仕様（入力、状態、撮影判定、各幕、UI、映像・音、技術案、受入条件）。
 - [docs/PLAN.md](docs/PLAN.md)：締切を踏まえた制作順序、削る基準、確認すること。
+- [STORY.md](STORY.md)：1987年の怪異調査という世界観、フレーバーテキスト原案、未実装の死亡演出案。
 - [docs/adr/0001-core-camera-loop.md](docs/adr/0001-core-camera-loop.md)：固定視点・露光式撮影に決めた理由と却下案。
 
 3幕まで実装しGitHub Pages上でクリアとリプレイを確認。残作業はiPhone Safari／Android Chrome実機での手触り確認とitch.io提出。
@@ -60,7 +61,7 @@ pnpm build
 
 ## コード構成
 
-`src/main.ts` は3幕の状態遷移と描画ループを担当。UIの静的マークアップは `view.ts`、効果音は `audio.ts`、タッチ・マウス操作は `input.ts`、6枚羽根は `iris.ts`、撮影評価は `shot.ts` に分割。教室の描画は `world.ts` と `atmosphere.ts` に置く。
+`src/main.ts` は3幕の状態遷移と描画ループを担当。UIの静的マークアップは `view.ts`、効果音は `audio.ts`、タッチ・マウス操作は `input.ts`、6枚羽根は `iris.ts`、撮影評価・死亡判定は `shot.ts`、30Hzの露光サンプル収集は `exposure-session.ts`、死亡画面の表示は `death-screen.ts` に分割。教室の描画とBlenderモーション再生は `world.ts` と `atmosphere.ts` に置く。
 
 撮影評価のテスト：`pnpm test`。型チェックとビルド：`pnpm build`。
 

@@ -1,12 +1,14 @@
-import { GhostWorld, type GhostSample } from './world';
+import { GhostWorld } from './world';
 import './style.css';
 import './polish.css';
 import './death.css';
 import { GAME_MARKUP } from './view';
 import { Sound } from './audio';
 import { ShutterIris } from './iris';
-import { evaluateShot, assessFatalExposure, type DeathCause, type ShotResult } from './shot';
+import { evaluateShot, assessFatalExposure, exposureLimit, type DeathCause, type ShotResult } from './shot';
 import { bindCameraInput } from './input';
+import { ExposureSession } from './exposure-session';
+import { DeathScreen } from './death-screen';
 
 type Phase = 'intro' | 'look' | 'opening' | 'exposing' | 'closing' | 'develop' | 'result' | 'album' | 'end' | 'dead';
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -29,6 +31,8 @@ const resultPanel = $('#result');
 const albumPanel = $('#album');
 const endPanel = $('#end');
 const deathPanel = $('#death');
+const deathScreen = new DeathScreen(deathPanel, import.meta.env.BASE_URL);
+const capture = new ExposureSession();
 const hint = $('#hint');
 const iris = new ShutterIris($('#iris-overlay'), $('#blades'));
 
@@ -41,14 +45,10 @@ let shots = 0;
 let currentPhoto = '';
 let deathCause: DeathCause | null = null;
 let currentResult: ShotResult | null = null;
-let exposureStart = 0;
-let exposureWorldStart = 0;
 let irisOpen = 1;
 let irisCloseFrom = 1;
 let endingClick = false;
-let lastSample = 0;
 let exposureSeconds = 0;
-let samples: GhostSample[] = [];
 let worldTime = 0;
 let irisStart = 0;
 let irisDirection: 'open'|'close'|null = null;
@@ -76,8 +76,8 @@ function syncHUD() {
 
 function startGame() {
   sound.start();
-  deathPanel.classList.add('hidden');
-  deathPanel.classList.remove('death-arrive');
+  deathScreen.reset();
+  capture.reset();
   game.classList.remove('fatal-warning');
   world.clearExposure();
   iris.draw(1); irisOpen = 1; irisDirection = null;
@@ -117,7 +117,7 @@ function advance() {
 function prepareLook() {
   setPhase('look');
   exposureSeconds = 0;
-  samples.length = 0;
+  capture.reset();
   world.clearExposure();
   game.classList.remove('fatal-warning');
   resultPanel.classList.add('hidden');
@@ -131,8 +131,8 @@ function prepareLook() {
   syncHUD();
 }
 
-const shotState = () => evaluateShot(samples, act, exposureSeconds, sample => world.project(sample));
-const fatalState = () => assessFatalExposure(samples, act, exposureSeconds, sample => world.project(sample));
+const shotState = () => evaluateShot(capture.samples, act, exposureSeconds, sample => world.project(sample));
+const fatalState = () => assessFatalExposure(capture.samples, act, exposureSeconds, sample => world.project(sample));
 
 function die(cause: DeathCause) {
   if (phase === 'dead') return;
@@ -143,38 +143,30 @@ function die(cause: DeathCause) {
   irisOpen = 0;
   shutter.classList.remove('pressed');
   game.classList.remove('fatal-warning');
-  world.showExposure(samples, exposureSeconds);
+  world.showExposure(capture.samples, exposureSeconds);
   world.render();
   sound.death();
   $('#hud').classList.remove('ready');
   resultPanel.classList.add('hidden');
   albumPanel.classList.add('hidden');
   endPanel.classList.add('hidden');
-  const ghost = $<HTMLImageElement>('#death-ghost');
-  ghost.src = import.meta.env.BASE_URL + 'assets/' + ['ghost-base.png', 'ghost-fast.png', 'ghost-near.png'][act];
-  $('#death-reason').textContent = cause === 'TOO CLOSE'
-    ? 'IT CAME TOO CLOSE. YOUR CAMERA COULD NOT SAVE YOU.'
-    : 'YOU HELD THE SHUTTER OPEN. IT FOUND ITS WAY THROUGH.';
   setPhase('dead');
-  deathPanel.classList.remove('hidden');
-  deathPanel.classList.remove('death-arrive');
-  void deathPanel.offsetHeight;
-  deathPanel.classList.add('death-arrive');
+  deathScreen.show(cause, act);
 }
 
 
 function endExposure(forced = false) {
   if (phase !== 'opening' && phase !== 'exposing') return;
   const t = performance.now() / 1000;
-  collectSamples(t, true);
-  exposureSeconds = clamp(t - exposureStart, 0, act === 2 ? 1.65 : 2.4);
+  capture.collect(t, exposureLimit(act), (time, age) => world.positionAt(time, age), true);
+  exposureSeconds = capture.elapsed(t, exposureLimit(act));
   const danger = fatalState();
   if (danger.cause || forced) {
     die(danger.cause ?? (act === 2 ? 'TOO CLOSE' : 'OVEREXPOSED'));
     return;
   }
   currentResult = shotState();
-  world.showExposure(samples, exposureSeconds);
+  world.showExposure(capture.samples, exposureSeconds);
   sound.close();
   irisCloseFrom = irisOpen;
   iris.draw(Math.max(0, irisOpen - .06));
@@ -200,25 +192,13 @@ function endExposure(forced = false) {
   syncHUD();
 }
 
-function collectSamples(t: number, final = false) {
-  const maxT = Math.min(t, exposureStart + (act === 2 ? 1.65 : 2.4));
-  while (lastSample + 1 / 30 <= maxT && samples.length < 73) {
-    lastSample += 1 / 30;
-    samples.push(world.positionAt(exposureWorldStart + lastSample - exposureStart, lastSample - exposureStart));
-  }
-  if (final && lastSample < maxT && samples.length < 73) {
-    lastSample = maxT;
-    samples.push(world.positionAt(exposureWorldStart + maxT - exposureStart, maxT - exposureStart));
-  }
-}
 function beginExposure() {
   if (phase !== 'look') return;
   sound.start(); sound.open();
   shutter.classList.add('pressed');
   $('#signal-label').textContent = 'SCANNING...';
   const now = performance.now() / 1000;
-  exposureStart = now; exposureWorldStart = worldTime; lastSample = now;
-  samples.length = 0;
+  capture.begin(now, worldTime);
   exposureSeconds = 0;
   irisDirection = 'open'; irisStart = now;
   iris.draw(0); irisOpen = 0;
@@ -234,7 +214,6 @@ bindCameraInput(canvas, shutter, {
   shootEnd: () => endExposure(),
   cancelExposure: () => {
     if (phase === 'opening' || phase === 'exposing') {
-      samples.length = 0;
       prepareLook();
     }
   }
@@ -307,9 +286,9 @@ function frame(tMs: number) {
   }
 
   if (exposing) {
-    exposureSeconds = clamp(t - exposureStart, 0, 2.4);
-    collectSamples(t);
-    world.showExposure(samples, Math.max(0, lastSample - exposureStart));
+    exposureSeconds = capture.elapsed(t, 2.4);
+    capture.collect(t, exposureLimit(act), (time, age) => world.positionAt(time, age));
+    world.showExposure(capture.samples, capture.recordedAge);
     const danger = fatalState();
     game.classList.toggle('fatal-warning', danger.warning);
     if (danger.cause) {
@@ -321,7 +300,7 @@ function frame(tMs: number) {
     $('#signal-label').textContent = danger.warning ? (act === 2 ? 'IT IS CLOSE' : 'THE FILM IS BURNING') : 'EXPOSING';
     sound.expose(exposureSeconds, act);
     if (phase === 'opening' && t - irisStart > .12) setPhase('exposing');
-    if (phase !== 'dead' && exposureSeconds >= (act === 2 ? 1.65 : 2.4)) endExposure(true);
+    if (phase !== 'dead' && exposureSeconds >= exposureLimit(act)) endExposure(true);
   }
   if (irisDirection === 'open') {
     const v = clamp((t - irisStart) / .12, 0, 1);
