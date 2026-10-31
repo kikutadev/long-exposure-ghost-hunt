@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { decorateClassroom } from './atmosphere';
-import { formExposure } from './shot';
+import { formExposure, type DeathCause } from './shot';
 
 export type GhostSample = { t: number; x: number; y: number; z: number; visible: boolean; size: number };
 const fixed = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -30,6 +30,9 @@ export class GhostWorld {
   private pitch = -.03;
   private textures: THREE.Texture[] = [];
   private sprites: THREE.Sprite[] = [];
+  private nearLayers: THREE.Texture[] = [];
+  private nearFace: THREE.Sprite | null = null;
+  private nearHand: THREE.Sprite | null = null;
   private flicker: THREE.PointLight;
   private frontFluorescent!: THREE.MeshStandardMaterial;
   private book: THREE.Mesh;
@@ -45,6 +48,7 @@ export class GhostWorld {
   private filmBleach = { value: 0 };
   private viewportW = 1;
   private viewportH = 1;
+  private fatal: {cause: DeathCause; origin: THREE.Vector3; quaternion: THREE.Quaternion; ghostZ: number} | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
@@ -72,6 +76,9 @@ export class GhostWorld {
     const loader = new THREE.TextureLoader();
     const names = ['ghost-base.png', 'ghost-fast.png', 'ghost-near.png'];
     this.textures = await Promise.all(names.map(n => loader.loadAsync(`${import.meta.env.BASE_URL}assets/${n}`)));
+    this.nearLayers = await Promise.all(['body', 'head', 'hand'].map(
+      part => loader.loadAsync(import.meta.env.BASE_URL + 'assets/ghost-near-' + part + '.png')
+    ));
     try {
       const dress = await new GLTFLoader().loadAsync(import.meta.env.BASE_URL + 'assets/classroom-dress.glb');
       this.scene.add(dress.scene);
@@ -108,7 +115,7 @@ export class GhostWorld {
     } catch (error) {
       console.warn('Blender props unavailable, using basic props', error);
     }
-    this.textures.forEach(t => {
+    [...this.textures, ...this.nearLayers].forEach(t => {
       t.colorSpace = THREE.SRGBColorSpace;
       t.minFilter = THREE.LinearMipmapLinearFilter;
       t.magFilter = THREE.LinearFilter;
@@ -116,21 +123,35 @@ export class GhostWorld {
     });
     for (let act = 0; act < 3; act++) {
       for (let i = 0; i < 6; i++) {
-        const mat = new THREE.SpriteMaterial({ map: this.textures[act], transparent: true, opacity: 0, depthWrite: false, depthTest: true, color: 0xe4ded7, toneMapped: false });
-        mat.onBeforeCompile = shader => {
-          shader.uniforms.filmBleach = this.filmBleach;
-          shader.fragmentShader = 'uniform float filmBleach;\n' + shader.fragmentShader;
-          shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>',
-            '#include <map_fragment>\n float filmGray = dot(diffuseColor.rgb, vec3(.299, .587, .114));\n diffuseColor.rgb = mix(diffuseColor.rgb, vec3(filmGray), .88);\n diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), filmBleach);');
-        };
-        const sprite = new THREE.Sprite(mat);
-        sprite.visible = false;
-        sprite.scale.set(1.88, 2.88, 1);
-        this.scene.add(sprite);
+        const texture = act === 2 && i === 0 ? this.nearLayers[0] : this.textures[act];
+        const sprite = this.makeGhostSprite(texture);
+        if (act === 2 && i === 0) sprite.renderOrder = 10;
         this.sprites.push(sprite);
       }
     }
+    this.nearFace = this.makeGhostSprite(this.nearLayers[1]);
+    this.nearFace.renderOrder = 11;
+    this.nearHand = this.makeGhostSprite(this.nearLayers[2]);
+    this.nearHand.renderOrder = 12;
     this.updateViewport();
+  }
+
+  private makeGhostSprite(texture: THREE.Texture): THREE.Sprite {
+    const material = new THREE.SpriteMaterial({
+      map: texture, transparent: true, opacity: 0,
+      depthWrite: false, depthTest: true, color: 0xe4ded7, toneMapped: false
+    });
+    material.onBeforeCompile = shader => {
+      shader.uniforms.filmBleach = this.filmBleach;
+      shader.fragmentShader = 'uniform float filmBleach;\n' + shader.fragmentShader;
+      shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>',
+        '#include <map_fragment>\n float filmGray = dot(diffuseColor.rgb, vec3(.299, .587, .114));\n diffuseColor.rgb = mix(diffuseColor.rgb, vec3(filmGray), .88);\n diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), filmBleach);');
+    };
+    const sprite = new THREE.Sprite(material);
+    sprite.visible = false;
+    sprite.scale.set(1.90, 2.86, 1);
+    this.scene.add(sprite);
+    return sprite;
   }
 
   private buildRoom() {
@@ -225,6 +246,7 @@ export class GhostWorld {
   }
 
   setAct(act: number) {
+    this.resetFatal();
     this.act = act;
     this.yaw = act === 1 ? -.13 : act === 2 ? 0 : -.07;
     this.pitch = -.025;
@@ -241,7 +263,7 @@ export class GhostWorld {
       const phase = ((t + .15) % 2.6 + 2.6) % 2.6;
       const active = phase < 1.05;
       const pos = Math.min(1, phase / 1.05);
-      return { t, x: -2.4 + pos * 4.8, y: 1.50 + .03 * Math.sin(t * 18), z: -5.4, visible: active, size: .92 };
+      return { t, x: 2.4 - pos * 4.8, y: 1.50 + .03 * Math.sin(t * 18), z: -5.4, visible: active, size: .92 };
     }
     const approach = Math.pow(fixed(exposureAge / 1.65, 0, 1), 2.2);
     return { t, x: .1 + .12 * Math.sin(t * 1.7), y: 1.6 + .06 * Math.sin(t * 1.4), z: -6.4 + approach * 10.9, visible: true, size: 1.08 };
@@ -267,7 +289,7 @@ export class GhostWorld {
     this.frontFluorescent.emissiveIntensity = (this.act === 2 ? .24 : .68) + Math.max(0, glitch);
     // bpy-authored motion clips. Three.js only chooses WHEN a physical event happens.
     // Local time is stable across replays and is coupled to the ghost's crossing.
-    const pageCycle = ((time + .2) % 4.1 + 4.1) % 4.1;
+    const pageCycle = ((time - .55) % 4.1 + 4.1) % 4.1;
     if (this.pageMixer) {
       this.pageMixer.setTime(this.act === 0 ? Math.min(pageCycle, this.pageClipDuration) : 0);
     } else {
@@ -281,9 +303,12 @@ export class GhostWorld {
           elapsed = pageCycle - 1.04;
         } else if (this.act === 1 && chair.z === -3.25) {
           const pass = ((time + .15) % 2.6 + 2.6) % 2.6;
-          elapsed = pass - ((chair.x + 2.6) / 5.2) * 1.05;
+          elapsed = pass - ((2.6 - chair.x) / 5.2) * 1.05;
         } else if (this.act === 2 && chair.x === 0) {
-          const cueAge = exposing ? exposureAge : (((time + .2) % 4.1 + 4.1) % 4.1);
+          const idlePulse = ((time + .2) % 4.1 + 4.1) % 4.1;
+          // Only the far chair stirs while idle; the approach starts on shutter press.
+          const cueAge = exposing ? exposureAge
+            : (chair.z === -5.7 && idlePulse > 2.8 ? Math.min(.44, (idlePulse - 2.8) * .65) : 0);
           const cueOffset = chair.z === -5.7 ? .25 : chair.z === -3.25 ? .73 : 1.16;
           elapsed = cueAge - cueOffset;
         }
@@ -295,7 +320,7 @@ export class GhostWorld {
         const cue = ((time + .15) % 2.6 + 2.6) % 2.6;
         const shift = this.act === 0 && x === -2.6 && z === -3.25
           ? Math.max(0, Math.sin(time * 2)) * .15
-          : this.act === 1 && z === -3.25 && cue >= (x + 2.6) / 5.2
+          : this.act === 1 && z === -3.25 && cue >= (2.6 - x) / 5.2
             ? .12 : 0;
         mesh.position.x = shift;
       });
@@ -307,14 +332,20 @@ export class GhostWorld {
     if (!exposing && this.photoWasExposing) { this.hideGhosts(); this.photoWasExposing = false; }
   }
 
-  hideGhosts() { this.sprites.forEach(s => { s.visible = false; }); }
+  hideGhosts() {
+    this.sprites.forEach(s => { s.visible = false; });
+    if (this.nearFace) this.nearFace.visible = false;
+    if (this.nearHand) this.nearHand.visible = false;
+  }
 
   showExposure(samples: GhostSample[], exposureSeconds: number) {
     this.photoWasExposing = true;
     this.hideGhosts();
     if (!samples.length) return;
     const film = formExposure(samples, this.act, exposureSeconds, s => this.project(s));
-    this.filmBleach.value = film.bleach;
+    // Act 3's danger is distance, not film bleaching. Keep the face and
+    // reaching hand legible even when the accumulated density is high.
+    this.filmBleach.value = this.act === 2 ? Math.min(.19, film.bleach * .18) : film.bleach;
     const total = film.weights.reduce((sum, weight) => sum + weight, 0);
     if (!total) return;
     // One readable human figure, with a few faint positional echoes.
@@ -325,12 +356,41 @@ export class GhostWorld {
       accumulated += film.weights[i];
       if (accumulated >= total / 2) { mid = i; break; }
     }
+    // Slow/crossing spirits record the most representative frame. The near
+    // spirit must actually approach the lens, not remain a weighted ghost far
+    // behind the desks while the fatal timer advances.
+    if (this.act === 2) mid = samples.length - 1;
     const primary = samples[mid];
     const main = this.sprites[this.act * 6];
     main.position.set(primary.x, primary.y, primary.z);
     main.scale.set(1.90 * primary.size, 2.86 * primary.size, 1);
     (main.material as THREE.SpriteMaterial).opacity = Math.min(.96, strength * .9);
     main.visible = true;
+    if (this.act === 2 && this.nearFace && this.nearHand) {
+      // The face leans and the reaching hand advances independently of the body.
+      // Soft-masked layers reconstruct the original illustration when aligned.
+      const lean = fixed((exposureSeconds - .47) / .95, 0, 1);
+      const reach = Math.pow(fixed((exposureSeconds - .72) / .92, 0, 1), 1.8);
+      const headScale = 1 + .065 * lean;
+      this.nearFace.position.set(
+        primary.x + .035 * lean,
+        primary.y + (1 - headScale) * .69 + .035 * lean,
+        primary.z + .018
+      );
+      this.nearFace.scale.set(main.scale.x * headScale, main.scale.y * headScale, 1);
+      (this.nearFace.material as THREE.SpriteMaterial).opacity = Math.min(.96, strength * .9);
+      this.nearFace.visible = true;
+
+      const handScale = 1 + .33 * reach;
+      this.nearHand.position.set(
+        primary.x + (1 - handScale) * (-.26) - .065 * reach,
+        primary.y + (1 - handScale) * .37 + .03 * reach,
+        primary.z + .025 + .21 * reach
+      );
+      this.nearHand.scale.set(main.scale.x * handScale, main.scale.y * handScale, 1);
+      (this.nearHand.material as THREE.SpriteMaterial).opacity = Math.min(.96, strength * .9);
+      this.nearHand.visible = true;
+    }
 
     // Only moving ghosts leave a noticeable trail; ghosts that stand still
     // become clearer rather than appearing as an opaque luminous blob.
@@ -351,6 +411,47 @@ export class GhostWorld {
   clearExposure() {
     this.photoWasExposing = false;
     this.hideGhosts();
+  }
+
+  beginFatal(cause: DeathCause) {
+    const main = this.sprites[this.act * 6];
+    this.fatal = {
+      cause,
+      origin: this.camera.position.clone(),
+      quaternion: this.camera.quaternion.clone(),
+      ghostZ: main.position.z,
+    };
+  }
+
+  renderFatal(elapsed: number, reducedMotion: boolean) {
+    if (!this.fatal) return;
+    const progress = fixed(elapsed / .82, 0, 1);
+    const rush = 1 - Math.pow(1 - progress, 3);
+    this.camera.position.copy(this.fatal.origin);
+    this.camera.quaternion.copy(this.fatal.quaternion);
+    if (this.fatal.cause === 'TOO CLOSE') {
+      // The viewpoint falls while the entity remains in the same classroom.
+      if (!reducedMotion) {
+        this.camera.position.y -= 1.05 * rush;
+        this.camera.position.x += .36 * rush;
+        this.camera.position.z += .24 * rush;
+        this.camera.rotateZ(-.34 * rush);
+        this.camera.rotateX(-.18 * rush);
+      }
+    } else {
+      // A corrupted exposure reverses the camera/subject relationship.
+      this.filmBleach.value = Math.min(1, .22 + rush * .74);
+      const main = this.sprites[this.act * 6];
+      main.position.z = this.fatal.ghostZ + 5.6 * rush;
+      if (!reducedMotion) this.camera.rotateZ(.045 * Math.sin(progress * 22) * (1-progress));
+    }
+    this.render();
+  }
+
+  resetFatal() {
+    this.fatal = null;
+    this.camera.position.set(0, 1.65, 5.7);
+    this.pointAtYaw();
   }
 
   render() { this.renderer.render(this.scene, this.camera); }

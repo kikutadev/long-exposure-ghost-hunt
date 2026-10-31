@@ -12,6 +12,7 @@ export function deathDescription(cause: DeathCause) {
 export class DeathScreen {
   private ghost: HTMLImageElement;
   private reason: HTMLElement;
+  private heading: HTMLElement | null;
   private panel: HTMLElement;
   private assetsBaseUrl: string;
 
@@ -23,6 +24,7 @@ export class DeathScreen {
     if (!ghost || !reason) throw new Error('Missing death screen elements');
     this.ghost = ghost;
     this.reason = reason;
+    this.heading = panel.querySelector<HTMLElement>('#death-heading');
   }
 
   reset() {
@@ -30,8 +32,10 @@ export class DeathScreen {
     this.panel.classList.remove('death-arrive');
   }
 
-  show(cause: DeathCause, act: number) {
-    this.ghost.src = `${this.assetsBaseUrl}assets/${GHOST_IMAGES[act]}`;
+  show(cause: DeathCause, act: number, finalFrame?: string) {
+    this.ghost.src = finalFrame ?? `${this.assetsBaseUrl}assets/${GHOST_IMAGES[act]}`;
+    this.ghost.alt = finalFrame ? 'The camera’s final view of the classroom' : 'A presence by the camera';
+    if (this.heading) this.heading.textContent = cause === 'TOO CLOSE' ? 'IT REACHED\nYOU.' : 'YOU WERE\nSEEN.';
     this.reason.textContent = deathDescription(cause);
     this.panel.classList.remove('hidden', 'death-arrive');
     // Restart CSS animation on a subsequent death, even after RESTART.

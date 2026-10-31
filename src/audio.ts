@@ -3,6 +3,7 @@ export class Sound {
   private hasAmbience = false;
   private enabled = true;
   private lastFilmTick = -1;
+  private nextApproachStep = 0;
   get isEnabled() { return this.enabled; }
   toggle() { this.enabled = !this.enabled; if (this.enabled) this.start(); else this.pause(); }
   start() {
@@ -25,8 +26,46 @@ export class Sound {
   pause() { if (this.ctx) void this.ctx.suspend(); }
   disturbance(act: number) {
     if (act === 0) { this.noise(.19,.008); this.tone(132,.18,.008,'triangle',107); }
-    else if (act === 1) { this.tone(900,.07,.014,'sine',240); this.noise(.12,.011); }
+    else if (act === 1) { this.fastPass(); }
     else { this.tone(53,.46,.025,'triangle',38); this.noise(.18,.008); }
+  }
+  paperFlip() {
+    // Thin, bright, dry paper; the chair sound is deliberately much heavier.
+    this.noise(.065, .012, 2600);
+    this.noise(.095, .007, 1500);
+  }
+  chairScrape() {
+    this.noise(.23, .021, 270);
+    this.tone(94, .16, .02, 'triangle', 56);
+  }
+  private fastPass() {
+    if (!this.enabled || !this.ctx) return;
+    const ctx = this.ctx;
+    // Three dry wood-floor knocks move from the window toward the classroom door.
+    // Schedule in audio time so the rhythm does not depend on rendering FPS.
+    for (const [delay, stereo] of [[0, .7], [.19, 0], [.38, -.7]]) {
+      const duration = .085;
+      const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * duration), ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) {
+        const progress = i / data.length;
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - progress, 2.8);
+      }
+      const src = ctx.createBufferSource();
+      const filter = ctx.createBiquadFilter();
+      const volume = ctx.createGain();
+      const pan = ctx.createStereoPanner();
+      src.buffer = buffer;
+      filter.type = 'lowpass';
+      filter.frequency.value = 430;
+      volume.gain.value = .095;
+      pan.pan.value = stereo;
+      src.connect(filter);
+      filter.connect(volume);
+      volume.connect(pan);
+      pan.connect(ctx.destination);
+      src.start(ctx.currentTime + delay);
+    }
   }
   tone(hz: number, duration: number, volume: number, type: OscillatorType = 'sine', endHz?: number) {
     if (!this.enabled || !this.ctx) return;
@@ -40,14 +79,14 @@ export class Sound {
     osc.connect(gain); gain.connect(ctx.destination);
     osc.start(); osc.stop(ctx.currentTime + duration);
   }
-  noise(duration: number, volume: number) {
+  noise(duration: number, volume: number, frequency = 840) {
     if (!this.enabled || !this.ctx) return;
     const ctx = this.ctx, len = Math.ceil(ctx.sampleRate * duration);
     const buffer = ctx.createBuffer(1, len, ctx.sampleRate), a = buffer.getChannelData(0);
     for (let i = 0; i < len; i++) a[i] = Math.random() * 2 - 1;
     const src = ctx.createBufferSource(), filter = ctx.createBiquadFilter(), gain = ctx.createGain();
     src.buffer = buffer;
-    filter.type = 'bandpass'; filter.frequency.value = 840; filter.Q.value = 1.3;
+    filter.type = 'bandpass'; filter.frequency.value = frequency; filter.Q.value = 1.3;
     gain.gain.setValueAtTime(volume, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(.0001, ctx.currentTime + duration);
     src.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
@@ -59,9 +98,24 @@ export class Sound {
     if (tick === this.lastFilmTick) return;
     this.lastFilmTick = tick;
     this.noise(.025, .003 + Math.min(seconds, 2) * .002);
-    if (act === 2) this.tone(48 + seconds * 12, .10, .008, 'triangle', 40);
+    if (act === 2) this.approachingFootsteps(seconds);
   }
-  open() { this.lastFilmTick = -1; this.tone(245, .11, .025, 'sawtooth', 410); this.noise(.08, .026); }
+  private approachingFootsteps(age: number) {
+    // Footsteps bunch together as the presence advances between desks.
+    const stepTimes = [.22, .52, .79, 1.02, 1.21, 1.36, 1.49];
+    while (this.nextApproachStep < stepTimes.length && age >= stepTimes[this.nextApproachStep]) {
+      const index = this.nextApproachStep++;
+      const closeness = index / (stepTimes.length - 1);
+      this.noise(.095, .010 + closeness * .022, 220 - closeness * 80);
+      this.tone(88 - closeness * 23, .11, .013 + closeness * .025, 'triangle', 38);
+    }
+  }
+  open() {
+    this.lastFilmTick = -1;
+    this.nextApproachStep = 0;
+    this.tone(245, .11, .025, 'sawtooth', 410);
+    this.noise(.08, .026);
+  }
   close() { this.noise(.065, .11); this.tone(190, .08, .13, 'triangle', 47); this.tone(1320, .035, .065, 'square', 520); }
   detected() { this.tone(430, .24, .036, 'sine', 650); this.tone(880, .24, .024, 'sine', 1000); }
   miss() { this.tone(162, .24, .035, 'triangle', 94); }

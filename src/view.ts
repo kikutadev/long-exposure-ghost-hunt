@@ -33,21 +33,21 @@ export const GAME_MARKUP = `
     <section class="screen intro-screen" id="intro">
       <div class="intro-top"><span>FILE NO. 001</span><span>OCT. 30, 1987</span></div>
       <div class="intro-center"><div class="small-cross">✛</div><p>THE CAMERA REVEALS<br/>WHAT THE EYE CANNOT.</p><h1>LONG<br/><em>EXPOSURE</em></h1><div class="title-rule"></div><h2>GHOST HUNT</h2></div>
-      <div class="intro-bottom"><p>They are moving.<br/>Only the exposure can catch them.</p><button id="start-button" class="primary-button">ENTER THE CLASSROOM <span>↗</span></button><p class="intro-foot">DRAG TO LOOK · HOLD & RELEASE TO SHOOT<br/>HEADPHONES RECOMMENDED</p></div>
+      <div class="intro-bottom"><p>ROOM 3-2 / SEALED 1987<br/>CAMERA RECOVERED ON SITE.</p><button id="start-button" class="primary-button">ENTER THE CLASSROOM <span>↗</span></button><p class="intro-foot">DRAG TO LOOK · HOLD & RELEASE TO SHOOT<br/>HEADPHONES RECOMMENDED</p></div>
     </section>
     <section class="screen result-screen hidden" id="result">
       <div class="result-head"><span id="shot-num">PHOTO 001</span><span>ANOMALY DETECTED</span></div>
-      <div class="print-frame"><div class="print-photo"><img id="photo-result" alt="Captured paranormal photograph" /></div><div class="print-caption"><span>LONG EXPOSURE</span><span id="print-time">0.00s</span></div></div>
+      <div class="print-frame"><div class="print-photo"><img id="photo-result" alt="Captured paranormal photograph" /></div><div class="print-caption"><span id="print-subject">LONG EXPOSURE</span><span id="print-time">0.00s</span></div></div>
       <div class="result-bottom"><div id="result-label">TOO DARK</div><p id="result-description">The light was too faint.</p><button id="result-action" class="primary-button">RETRY <span>↗</span></button></div>
     </section>
     <section class="screen album-screen hidden" id="album"><div class="album-head"><span>PHOTO ARCHIVE</span><button id="close-album" class="outline-button">✕ CLOSE</button></div><div id="album-grid"></div></section>
     <section class="screen end-screen hidden" id="end">
-      <div class="end-head">ARCHIVE COMPLETE <span>03 / 03</span></div><div class="end-title">THREE<br/>EXPOSURES.</div><div class="end-description">In every photograph, someone is looking back.</div><div id="end-photos" class="end-photos"></div><p class="end-last">YOUR CAMERA FIRES ONCE MORE.<br/>BUT YOUR FINGER IS NOT ON THE SHUTTER.</p><button id="replay" class="primary-button">REPLAY <span>↗</span></button>
+      <div class="end-head">ARCHIVE COMPLETE <span>03 / 03</span></div><div class="end-title">THREE<br/>EXPOSURES.</div><div class="end-description">In every photograph, someone is looking back.</div><div id="end-photos" class="end-photos"></div><p id="end-record" class="end-last hidden">EXPOSURE 004<br/>OPERATOR: UNKNOWN</p><button id="replay" class="primary-button">REPLAY <span>↗</span></button>
     </section>
     <section class="screen death-screen hidden" id="death" aria-live="assertive">
       <div class="death-top">SIGNAL LOST <span>FILE TERMINATED</span></div>
       <div class="death-vision"><img id="death-ghost" src="./assets/ghost-near.png" alt="A ghost overwhelms the camera"/><div class="death-fault"></div></div>
-      <div class="death-bottom"><div class="death-kicker">YOU DID NOT CLOSE IT IN TIME.</div><h2>YOU<br/>ARE DEAD.</h2><p id="death-reason">THE PRESENCE REACHED YOU.</p><button id="death-restart" class="primary-button">RESTART <span>↗</span></button><p class="death-foot">YOUR PHOTOGRAPHS ARE LOST.</p></div>
+      <div class="death-bottom"><div class="death-kicker">CAMERA SIGNAL TERMINATED</div><h2 id="death-heading">YOU WERE<br/>SEEN.</h2><p id="death-reason">THE PRESENCE REACHED YOU.</p><button id="death-restart" class="primary-button">RESTART <span>↗</span></button><p class="death-foot">YOUR PHOTOGRAPHS ARE LOST.</p></div>
     </section>
     <div id="rotate" class="rotate-screen"><div>▣</div><h2>ROTATE YOUR DEVICE</h2><p>Best experienced in portrait mode.</p></div>
     <div id="loading"><div class="load-mark">◌</div>LOADING FILM...</div>

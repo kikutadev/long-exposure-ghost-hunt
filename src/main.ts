@@ -10,7 +10,7 @@ import { bindCameraInput } from './input';
 import { ExposureSession } from './exposure-session';
 import { DeathScreen } from './death-screen';
 
-type Phase = 'intro' | 'look' | 'opening' | 'exposing' | 'closing' | 'develop' | 'result' | 'album' | 'end' | 'dead';
+type Phase = 'intro' | 'look' | 'opening' | 'exposing' | 'closing' | 'develop' | 'result' | 'album' | 'end' | 'dying' | 'dead';
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const $ = <T extends HTMLElement>(selector: string): T => {
   const element = document.querySelector<T>(selector);
@@ -57,9 +57,16 @@ let lastTime = 0;
 let albumFrom: Phase = 'look';
 let lastDisturbance = -5;
 let lastFastCue = -1;
+let lastPaperCycle = -1;
+let lastChairCycle = -1;
 
 
 const sound = new Sound();
+const RECORDS = [
+  { name: 'THE ONE WHO WAITS', note: 'The notebook keeps turning. Nobody is there.' },
+  { name: 'THE ONE WHO RUNS', note: 'The chairs move toward the door. It never opens.' },
+  { name: 'THE ONE WHO WATCHES', note: 'It moves closer when the shutter is open.' }
+] as const;
 
 function setPhase(next: Phase) { phase = next; game.dataset.phase = next; phaseStarted = performance.now() / 1000; }
 function syncHUD() {
@@ -77,11 +84,13 @@ function syncHUD() {
 function startGame() {
   sound.start();
   deathScreen.reset();
+  world.resetFatal();
+  delete game.dataset.deathCause;
   capture.reset();
   game.classList.remove('fatal-warning');
   world.clearExposure();
   iris.draw(1); irisOpen = 1; irisDirection = null;
-  worldTime = 0; lastDisturbance = -5; lastFastCue = -1; deathCause = null;
+  worldTime = 0; lastDisturbance = -5; lastFastCue = -1; lastPaperCycle = -1; lastChairCycle = -1; deathCause = null;
   $('#intro').classList.add('hidden');
   $('#hud').classList.add('ready');
   setPhase('look');
@@ -99,6 +108,8 @@ function advance() {
   }
   if (act === 2) {
     setPhase('end'); endingClick = false;
+    endPanel.classList.remove('last-click');
+    $('#end-record').classList.add('hidden');
     resultPanel.classList.add('hidden');
     $('#hud').classList.remove('ready');
     const endPhotos = $('#end-photos');
@@ -108,6 +119,7 @@ function advance() {
     return;
   }
   act++;
+  if (act === 1) lastFastCue = Math.floor((worldTime + .15) / 2.6);
   world.setAct(act);
   resultPanel.classList.add('hidden');
   prepareLook();
@@ -135,7 +147,7 @@ const shotState = () => evaluateShot(capture.samples, act, exposureSeconds, samp
 const fatalState = () => assessFatalExposure(capture.samples, act, exposureSeconds, sample => world.project(sample));
 
 function die(cause: DeathCause) {
-  if (phase === 'dead') return;
+  if (phase === 'dead' || phase === 'dying') return;
   deathCause = cause;
   currentResult = null;
   irisDirection = null;
@@ -144,14 +156,14 @@ function die(cause: DeathCause) {
   shutter.classList.remove('pressed');
   game.classList.remove('fatal-warning');
   world.showExposure(capture.samples, exposureSeconds);
-  world.render();
+  world.beginFatal(cause);
   sound.death();
   $('#hud').classList.remove('ready');
   resultPanel.classList.add('hidden');
   albumPanel.classList.add('hidden');
   endPanel.classList.add('hidden');
-  setPhase('dead');
-  deathScreen.show(cause, act);
+  game.dataset.deathCause = cause;
+  setPhase('dying');
 }
 
 
@@ -228,13 +240,13 @@ resultPanel.addEventListener('click', event => {
 }, true);
 $('#death-restart').addEventListener('click', () => { if (phase === 'dead') startGame(); });
 $('#replay').addEventListener('click', () => {
-  endPanel.classList.add('hidden'); endPanel.classList.remove('last-click'); startGame();
+  endPanel.classList.add('hidden'); endPanel.classList.remove('last-click'); $('#end-record').classList.add('hidden'); startGame();
 });
 $('#sound').addEventListener('click', () => { sound.toggle(); syncHUD(); });
 $('#album-button').addEventListener('click', () => {
   if (phase !== 'look' || photos.length === 0) return;
   albumFrom = phase; setPhase('album'); $('#hud').classList.remove('ready');
-  $('#album-grid').innerHTML = photos.map((src, i) => `<div class="archive-entry"><img src="${src}" alt="Captured ghost ${i+1}"><span>0${i+1} · ${photoTimes[i].toFixed(2)}s</span></div>`).join('');
+  $('#album-grid').innerHTML = photos.map((src, i) => `<div class="archive-entry"><img src="${src}" alt="Captured ghost ${i+1}"><span>0${i+1} · ${RECORDS[i].name} · ${photoTimes[i].toFixed(2)}s</span></div>`).join('');
   albumPanel.classList.remove('hidden');
 });
 $('#close-album').addEventListener('click', () => {
@@ -249,9 +261,10 @@ function showResult() {
   $('#photo-result').setAttribute('src', currentPhoto);
   $('#shot-num').textContent = `PHOTO ${String(shots).padStart(3,'0')}`;
   $('#print-time').textContent = `${exposureSeconds.toFixed(2)}s`;
+  $('#print-subject').textContent = currentResult?.success ? RECORDS[act].name : 'LONG EXPOSURE';
   $('#result-label').textContent = currentResult?.label ?? 'UNKNOWN';
   $('#result-label').classList.toggle('success', !!currentResult?.success);
-  $('#result-description').textContent = currentResult?.description ?? '';
+  $('#result-description').textContent = currentResult?.success ? RECORDS[act].note : (currentResult?.description ?? '');
   let strip = resultPanel.querySelector<HTMLElement>('.failed-prints');
   if (!strip) { strip = document.createElement('div'); strip.className = 'failed-prints'; $('#result-description').after(strip); }
   strip.innerHTML = history.map((src, i) => `<img src="${src}" alt="Recent attempt ${i + 1}">`).join('');
@@ -270,17 +283,40 @@ function frame(tMs: number) {
   const dt = lastTime ? clamp(t - lastTime, 0, .06) : 0;
   lastTime = t;
   if (document.hidden || matchMedia('(orientation:landscape) and (max-height:540px)').matches) return;
+  if (phase === 'dying') {
+    const age = t - phaseStarted;
+    world.renderFatal(age, matchMedia('(prefers-reduced-motion: reduce)').matches);
+    if (age >= .82) {
+      setPhase('dead');
+      deathScreen.show(deathCause ?? 'OVEREXPOSED', act, world.capture());
+    }
+    return;
+  }
   const exposing = phase === 'opening' || phase === 'exposing';
   if (phase === 'look' || exposing) {
     worldTime += dt;
   }
   if (phase === 'look' || exposing) world.tick(dt, worldTime, exposing, exposureSeconds);
-  const fastCue = Math.floor((worldTime + .40) / 2.6);
+  const fastCue = Math.floor((worldTime + .15) / 2.6);
   if (phase === 'look' && act === 1 && fastCue !== lastFastCue) {
     lastFastCue = fastCue;
     sound.disturbance(act);
   }
-  if (phase === 'look' && act !== 1 && worldTime - lastDisturbance >= [6.5,2.6,4.6][act]) {
+  if (act === 0 && (phase === 'look' || exposing)) {
+    // Sound follows the actual Blender leaf and chair clip times, not a
+    // separate arbitrary alarm clock.
+    const cycle = Math.floor((worldTime - .55) / 4.1);
+    const age = ((worldTime - .55) % 4.1 + 4.1) % 4.1;
+    if (worldTime >= .55 && age >= .33 && cycle !== lastPaperCycle) {
+      lastPaperCycle = cycle;
+      sound.paperFlip();
+    }
+    if (worldTime >= .55 && age >= 1.14 && cycle !== lastChairCycle) {
+      lastChairCycle = cycle;
+      sound.chairScrape();
+    }
+  }
+  if (phase === 'look' && act === 2 && worldTime - lastDisturbance >= 4.6) {
     lastDisturbance = worldTime;
     sound.disturbance(act);
   }
@@ -321,6 +357,7 @@ function frame(tMs: number) {
   if (phase === 'end' && !endingClick && t - phaseStarted > 1.5) {
     endingClick = true; sound.close();
     endPanel.classList.add('last-click');
+    $('#end-record').classList.remove('hidden');
   }
   if (phase === 'look' || exposing || phase === 'closing') world.render();
 }
