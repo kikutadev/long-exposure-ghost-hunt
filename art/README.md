@@ -51,3 +51,12 @@
 
 ## 2026-10-31 bpyモーション
 Blender --background art/classroom-dress.blend --threads 3 --python art/build-motion.py で再生成する。紙のめくれ AN_Notebook_Flip、椅子の傾き・滑り・反動 AN_Chair_Scrape をNLAで書き出す。Blender実レンダリングは preview-motion-rest.png と preview-motion-open.png。GLBに2本を格納し再実行で重複しない。Three.jsでAnimationMixerから再生する。Riveシャッター移行はしない。
+## 2026-10-31 第3幕の霊：Blender 2.5D演技
+
+**Production Brief**：モバイル縦画面向けの写実的な接近霊。既存の `ghost-near.png` にある顔・髪・手の材質を維持し、露光0〜1.6秒の間に、俯いた顔がゆっくり正面へ向き、最後の0.3秒で手がレンズへ迫る動作を作る。人物を新しくローポリ化しない。Three.jsの実際の接近座標と、死亡判定の1.65秒はそのまま。
+
+- **作成方式**：`art/split-near-layers.py` で胴体・顔・手を柔らかくマスク分離（書き出し素材は `public/assets/ghost-near-{body,head,hand}.png`）。`art/build-near-performance.py` はBlender 4.5の `bpy` から各部の解剖学的な付け根に2.5D回転軸を置き、頭と手の動くタイミングをずらして12枚のポーズを透明背景で描画。結果は `.qa/near-performance/pose-00.png`〜`pose-11.png`。
+- **ゲーム用書き出し**：`art/pack-near-performance.py` で512×768の12枚を4×3（2048×2304）の `public/assets/ghost-near-performance.webp` にまとめる。現在約1.4MB。Three.jsでは1枚のテクスチャを露光時間でUV切替。GPU上では12枚を個別ロードせず1枚にし、古い3分割テクスチャは描画時にロードしない。
+- **再制作**：`python3 art/split-near-layers.py` → `/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python art/build-near-performance.py` → `python3 art/pack-near-performance.py`。環境によってBlenderが制限されたプロセス内で異常終了したため、Macホストのヘッドレス実行で生成した。手元のPythonがPillowを持っていることを要確認。
+- **検証**：Blender出力12フレームのコンタクトシートと、実ブラウザ390×844での露光0.3・0.7・0.9・1.1・1.3・1.55秒付近を目視。1.65秒の接近死・RESTART、3枚撮影→END→REPLAYのブラウザQAと23件の単体テストは通過。
+- **限界**：正面からの原画を変形させており、実際の頭の奥行き・肩から指関節までのリグを作ったわけではない。手の突き出しは最後の0.3秒に集中し、首・肘・指の正確な関節運動は現状では再現できない。**造形の自然さは未達**。これはスタイルの完成基準を下げる根拠ではない。次の人物制作は正しい姿勢差分か、フォトリアルな3Dリグを検討する。

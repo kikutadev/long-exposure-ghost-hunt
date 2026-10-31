@@ -30,9 +30,8 @@ export class GhostWorld {
   private pitch = -.03;
   private textures: THREE.Texture[] = [];
   private sprites: THREE.Sprite[] = [];
-  private nearLayers: THREE.Texture[] = [];
-  private nearFace: THREE.Sprite | null = null;
-  private nearHand: THREE.Sprite | null = null;
+  private nearPerformance!: THREE.Texture;
+  private nearPose = -1;
   private flicker: THREE.PointLight;
   private frontFluorescent!: THREE.MeshStandardMaterial;
   private book: THREE.Mesh;
@@ -76,9 +75,7 @@ export class GhostWorld {
     const loader = new THREE.TextureLoader();
     const names = ['ghost-base.png', 'ghost-fast.png', 'ghost-near.png'];
     this.textures = await Promise.all(names.map(n => loader.loadAsync(`${import.meta.env.BASE_URL}assets/${n}`)));
-    this.nearLayers = await Promise.all(['body', 'head', 'hand'].map(
-      part => loader.loadAsync(import.meta.env.BASE_URL + 'assets/ghost-near-' + part + '.png')
-    ));
+    this.nearPerformance = await loader.loadAsync(import.meta.env.BASE_URL + 'assets/ghost-near-performance.webp');
     try {
       const dress = await new GLTFLoader().loadAsync(import.meta.env.BASE_URL + 'assets/classroom-dress.glb');
       this.scene.add(dress.scene);
@@ -115,7 +112,7 @@ export class GhostWorld {
     } catch (error) {
       console.warn('Blender props unavailable, using basic props', error);
     }
-    [...this.textures, ...this.nearLayers].forEach(t => {
+    [...this.textures, this.nearPerformance].forEach(t => {
       t.colorSpace = THREE.SRGBColorSpace;
       t.minFilter = THREE.LinearMipmapLinearFilter;
       t.magFilter = THREE.LinearFilter;
@@ -123,17 +120,27 @@ export class GhostWorld {
     });
     for (let act = 0; act < 3; act++) {
       for (let i = 0; i < 6; i++) {
-        const texture = act === 2 && i === 0 ? this.nearLayers[0] : this.textures[act];
+        const texture = act === 2 && i === 0 ? this.nearPerformance : this.textures[act];
         const sprite = this.makeGhostSprite(texture);
         if (act === 2 && i === 0) sprite.renderOrder = 10;
         this.sprites.push(sprite);
       }
     }
-    this.nearFace = this.makeGhostSprite(this.nearLayers[1]);
-    this.nearFace.renderOrder = 11;
-    this.nearHand = this.makeGhostSprite(this.nearLayers[2]);
-    this.nearHand.renderOrder = 12;
+    this.setNearPose(0);
     this.updateViewport();
+  }
+
+  private setNearPose(age: number) {
+    // Blender-rendered head/forearm performance is packed in a 4x3 atlas.
+    // The last frames anticipate and then snap toward the camera.
+    const ages = [0, .18, .36, .54, .70, .86, 1.00, 1.13, 1.25, 1.35, 1.46, 1.58];
+    let frame = 0;
+    while (frame < ages.length - 1 && age >= (ages[frame] + ages[frame + 1]) / 2) frame++;
+    if (frame === this.nearPose) return;
+    this.nearPose = frame;
+    this.nearPerformance.repeat.set(.25, 1 / 3);
+    this.nearPerformance.offset.set((frame % 4) / 4, 1 - (Math.floor(frame / 4) + 1) / 3);
+    this.nearPerformance.updateMatrix();
   }
 
   private makeGhostSprite(texture: THREE.Texture): THREE.Sprite {
@@ -248,6 +255,8 @@ export class GhostWorld {
   setAct(act: number) {
     this.resetFatal();
     this.act = act;
+    this.nearPose = -1;
+    this.setNearPose(0);
     this.yaw = act === 1 ? -.13 : act === 2 ? 0 : -.07;
     this.pitch = -.025;
     this.pointAtYaw();
@@ -332,11 +341,7 @@ export class GhostWorld {
     if (!exposing && this.photoWasExposing) { this.hideGhosts(); this.photoWasExposing = false; }
   }
 
-  hideGhosts() {
-    this.sprites.forEach(s => { s.visible = false; });
-    if (this.nearFace) this.nearFace.visible = false;
-    if (this.nearHand) this.nearHand.visible = false;
-  }
+  hideGhosts() { this.sprites.forEach(s => { s.visible = false; }); }
 
   showExposure(samples: GhostSample[], exposureSeconds: number) {
     this.photoWasExposing = true;
@@ -364,33 +369,12 @@ export class GhostWorld {
     const main = this.sprites[this.act * 6];
     main.position.set(primary.x, primary.y, primary.z);
     main.scale.set(1.90 * primary.size, 2.86 * primary.size, 1);
-    (main.material as THREE.SpriteMaterial).opacity = Math.min(.96, strength * .9);
+    // Once the presence notices the lens it becomes less spectral and more
+    // physically threatening. The safe ~0.7s exposure is unaffected.
+    const imminent = this.act === 2 ? Math.pow(fixed((exposureSeconds - 1.08) / .5, 0, 1), 1.5) : 0;
+    (main.material as THREE.SpriteMaterial).opacity = Math.min(.98, strength * .9 + imminent * .36);
     main.visible = true;
-    if (this.act === 2 && this.nearFace && this.nearHand) {
-      // The face leans and the reaching hand advances independently of the body.
-      // Soft-masked layers reconstruct the original illustration when aligned.
-      const lean = fixed((exposureSeconds - .47) / .95, 0, 1);
-      const reach = Math.pow(fixed((exposureSeconds - .72) / .92, 0, 1), 1.8);
-      const headScale = 1 + .065 * lean;
-      this.nearFace.position.set(
-        primary.x + .035 * lean,
-        primary.y + (1 - headScale) * .69 + .035 * lean,
-        primary.z + .018
-      );
-      this.nearFace.scale.set(main.scale.x * headScale, main.scale.y * headScale, 1);
-      (this.nearFace.material as THREE.SpriteMaterial).opacity = Math.min(.96, strength * .9);
-      this.nearFace.visible = true;
-
-      const handScale = 1 + .33 * reach;
-      this.nearHand.position.set(
-        primary.x + (1 - handScale) * (-.26) - .065 * reach,
-        primary.y + (1 - handScale) * .37 + .03 * reach,
-        primary.z + .025 + .21 * reach
-      );
-      this.nearHand.scale.set(main.scale.x * handScale, main.scale.y * handScale, 1);
-      (this.nearHand.material as THREE.SpriteMaterial).opacity = Math.min(.96, strength * .9);
-      this.nearHand.visible = true;
-    }
+    if (this.act === 2) this.setNearPose(exposureSeconds);
 
     // Only moving ghosts leave a noticeable trail; ghosts that stand still
     // become clearer rather than appearing as an opaque luminous blob.
@@ -430,6 +414,9 @@ export class GhostWorld {
     this.camera.position.copy(this.fatal.origin);
     this.camera.quaternion.copy(this.fatal.quaternion);
     if (this.fatal.cause === 'TOO CLOSE') {
+      // The final pose strikes as the camera starts to fall.
+      this.setNearPose(1.58);
+      this.sprites[2 * 6].position.z = this.fatal.ghostZ + .45 * rush;
       // The viewpoint falls while the entity remains in the same classroom.
       if (!reducedMotion) {
         this.camera.position.y -= 1.05 * rush;
