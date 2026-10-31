@@ -178,7 +178,7 @@ function endExposure(forced = false) {
     return;
   }
   currentResult = shotState();
-  world.showExposure(capture.samples, exposureSeconds);
+  world.showExposure(capture.samples, exposureSeconds, true);
   sound.close();
   irisCloseFrom = irisOpen;
   iris.draw(Math.max(0, irisOpen - .06));

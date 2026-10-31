@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@rive-app/canvas-advanced':
+        specifier: 2.47.1
+        version: 2.47.1
       three:
         specifier: ^0.180.0
         version: 0.180.0
@@ -189,6 +192,9 @@ packages:
     cpu: [x64]
     os: [linux]
     libc: [glibc]
+
+  '@rive-app/canvas-advanced@2.47.1':
+    resolution: {integrity: sha512-ijUJ/6RARDwnYj438shk9Gg7cq4Yjnbm7ep3OqWyYrQj2EEcafSsFKY5/qtUW4xutOGLbClAQWHTb6BkPX4Y/w==}
 
   '@rollup/rollup-android-arm-eabi@4.66.0':
     resolution: {integrity: sha512-7y4XeoUHPecjfUDRmap8U0q6bjfLAPn7uOGT8BKyqy8uNDOjsGS8rlBhOx6sZLVwwjN6hapvGl2mW9/IS6UNww==}
@@ -532,6 +538,8 @@ snapshots:
 
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true
+
+  '@rive-app/canvas-advanced@2.47.1': {}
 
   '@rollup/rollup-android-arm-eabi@4.66.0':
     optional: true

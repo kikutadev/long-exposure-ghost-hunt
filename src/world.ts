@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { decorateClassroom } from './atmosphere';
 import { formExposure, type DeathCause } from './shot';
+import { RiveGhost } from './rive-ghost';
+import { nearGhostSample } from './near-ghost-motion';
 
 export type GhostSample = { t: number; x: number; y: number; z: number; visible: boolean; size: number };
 const fixed = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -30,8 +32,8 @@ export class GhostWorld {
   private pitch = -.03;
   private textures: THREE.Texture[] = [];
   private sprites: THREE.Sprite[] = [];
-  private nearPerformance!: THREE.Texture;
-  private nearPose = -1;
+  private nearGhost = new RiveGhost();
+  private nearGhostEnabled = false;
   private flicker: THREE.PointLight;
   private frontFluorescent!: THREE.MeshStandardMaterial;
   private book: THREE.Mesh;
@@ -75,7 +77,13 @@ export class GhostWorld {
     const loader = new THREE.TextureLoader();
     const names = ['ghost-base.png', 'ghost-fast.png', 'ghost-near.png'];
     this.textures = await Promise.all(names.map(n => loader.loadAsync(`${import.meta.env.BASE_URL}assets/${n}`)));
-    this.nearPerformance = await loader.loadAsync(import.meta.env.BASE_URL + 'assets/ghost-near-performance.webp');
+    try {
+      await this.nearGhost.load(import.meta.env.BASE_URL + 'assets/ghost-near.riv');
+      this.nearGhostEnabled = true;
+    } catch (error) {
+      // Unsupported WASM/device must not trap the player on the loading screen.
+      console.warn('Rive ghost unavailable; using original photograph.', error);
+    }
     try {
       const dress = await new GLTFLoader().loadAsync(import.meta.env.BASE_URL + 'assets/classroom-dress.glb');
       this.scene.add(dress.scene);
@@ -112,7 +120,7 @@ export class GhostWorld {
     } catch (error) {
       console.warn('Blender props unavailable, using basic props', error);
     }
-    [...this.textures, this.nearPerformance].forEach(t => {
+    this.textures.forEach(t => {
       t.colorSpace = THREE.SRGBColorSpace;
       t.minFilter = THREE.LinearMipmapLinearFilter;
       t.magFilter = THREE.LinearFilter;
@@ -120,27 +128,14 @@ export class GhostWorld {
     });
     for (let act = 0; act < 3; act++) {
       for (let i = 0; i < 6; i++) {
-        const texture = act === 2 && i === 0 ? this.nearPerformance : this.textures[act];
+        const texture = act === 2 && i === 0 && this.nearGhostEnabled ? this.nearGhost.texture : this.textures[act];
         const sprite = this.makeGhostSprite(texture);
         if (act === 2 && i === 0) sprite.renderOrder = 10;
         this.sprites.push(sprite);
       }
     }
-    this.setNearPose(0);
+    this.nearGhost.reset();
     this.updateViewport();
-  }
-
-  private setNearPose(age: number) {
-    // Blender-rendered head/forearm performance is packed in a 4x3 atlas.
-    // The last frames anticipate and then snap toward the camera.
-    const ages = [0, .18, .36, .54, .70, .86, 1.00, 1.13, 1.25, 1.35, 1.46, 1.58];
-    let frame = 0;
-    while (frame < ages.length - 1 && age >= (ages[frame] + ages[frame + 1]) / 2) frame++;
-    if (frame === this.nearPose) return;
-    this.nearPose = frame;
-    this.nearPerformance.repeat.set(.25, 1 / 3);
-    this.nearPerformance.offset.set((frame % 4) / 4, 1 - (Math.floor(frame / 4) + 1) / 3);
-    this.nearPerformance.updateMatrix();
   }
 
   private makeGhostSprite(texture: THREE.Texture): THREE.Sprite {
@@ -255,8 +250,7 @@ export class GhostWorld {
   setAct(act: number) {
     this.resetFatal();
     this.act = act;
-    this.nearPose = -1;
-    this.setNearPose(0);
+    this.nearGhost.reset();
     this.yaw = act === 1 ? -.13 : act === 2 ? 0 : -.07;
     this.pitch = -.025;
     this.pointAtYaw();
@@ -274,8 +268,7 @@ export class GhostWorld {
       const pos = Math.min(1, phase / 1.05);
       return { t, x: 2.4 - pos * 4.8, y: 1.50 + .03 * Math.sin(t * 18), z: -5.4, visible: active, size: .92 };
     }
-    const approach = Math.pow(fixed(exposureAge / 1.65, 0, 1), 2.2);
-    return { t, x: .1 + .12 * Math.sin(t * 1.7), y: 1.6 + .06 * Math.sin(t * 1.4), z: -6.4 + approach * 10.9, visible: true, size: 1.08 };
+    return nearGhostSample(t, exposureAge);
   }
 
   project(sample: GhostSample) {
@@ -343,7 +336,7 @@ export class GhostWorld {
 
   hideGhosts() { this.sprites.forEach(s => { s.visible = false; }); }
 
-  showExposure(samples: GhostSample[], exposureSeconds: number) {
+  showExposure(samples: GhostSample[], exposureSeconds: number, frozenPhoto = false) {
     this.photoWasExposing = true;
     this.hideGhosts();
     if (!samples.length) return;
@@ -365,7 +358,17 @@ export class GhostWorld {
     // spirit must actually approach the lens, not remain a weighted ghost far
     // behind the desks while the fatal timer advances.
     if (this.act === 2) mid = samples.length - 1;
-    const primary = samples[mid];
+    let primary = samples[mid];
+    // While watching, the two disappearances are truly blank. On film, an
+    // exposure still retains the last visible silhouette, even if the shutter
+    // closes in the 40ms gap between sightings.
+    if (this.act === 2 && !primary.visible) {
+      if (!frozenPhoto) return;
+      const lastVisible = [...samples].reverse().find(sample => sample.visible);
+      if (!lastVisible) return;
+      primary = lastVisible;
+      mid = samples.lastIndexOf(lastVisible);
+    }
     const main = this.sprites[this.act * 6];
     main.position.set(primary.x, primary.y, primary.z);
     main.scale.set(1.90 * primary.size, 2.86 * primary.size, 1);
@@ -373,8 +376,8 @@ export class GhostWorld {
     // physically threatening. The safe ~0.7s exposure is unaffected.
     const imminent = this.act === 2 ? Math.pow(fixed((exposureSeconds - 1.08) / .5, 0, 1), 1.5) : 0;
     (main.material as THREE.SpriteMaterial).opacity = Math.min(.98, strength * .9 + imminent * .36);
-    main.visible = true;
-    if (this.act === 2) this.setNearPose(exposureSeconds);
+    main.visible = primary.visible;
+    if (this.act === 2) this.nearGhost.renderAt(exposureSeconds);
 
     // Only moving ghosts leave a noticeable trail; ghosts that stand still
     // become clearer rather than appearing as an opaque luminous blob.
@@ -415,7 +418,7 @@ export class GhostWorld {
     this.camera.quaternion.copy(this.fatal.quaternion);
     if (this.fatal.cause === 'TOO CLOSE') {
       // The final pose strikes as the camera starts to fall.
-      this.setNearPose(1.58);
+      this.nearGhost.renderAt(1.65, true);
       this.sprites[2 * 6].position.z = this.fatal.ghostZ + .45 * rush;
       // The viewpoint falls while the entity remains in the same classroom.
       if (!reducedMotion) {
