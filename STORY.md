@@ -53,7 +53,7 @@
 
 | 場面 | 英語文案 | 表現する事実 |
 | --- | --- | --- |
-| タイトル下部 | `ROOM 3-B WAS SEALED IN 1987. THE CAMERA WAS FOUND INSIDE.` | 学校の封鎖とカメラの回収 |
+| タイトル下部 | `ROOM 3-2 WAS SEALED IN 1987. THE CAMERA WAS FOUND INSIDE.` | 学校の封鎖とカメラの回収 |
 | 撮影機材の注意 | `WARNING: EXTENDED EXPOSURE MAY RESULT IN RECIPROCAL OBSERVATION.` | 見る行為が見られる行為になる（直訳より「相互観測」の不気味さを優先） |
 | 写真01 | `The notebook keeps turning its pages. Nobody is there.` | 待つ者の痕跡 |
 | 写真02 | `The chairs move toward the door. The door never opens.` | 走る者の痕跡 |
