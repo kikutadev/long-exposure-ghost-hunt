@@ -420,7 +420,7 @@ export class GhostWorld {
     // reaching hand legible even when the accumulated density is high.
     this.filmBleach.value = this.act === 2 ? Math.min(.19, film.bleach * .18)
       : this.act === 1 ? Math.min(.43, film.bleach * .43)
-      : Math.min(.10, film.bleach * .12);
+      : Math.min(.34, film.bleach * .36);
     const total = film.weights.reduce((sum, weight) => sum + weight, 0);
     if (!total) return;
     // One readable human figure, with a few faint positional echoes.

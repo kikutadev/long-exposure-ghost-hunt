@@ -1,6 +1,6 @@
 # LONG EXPOSURE: GHOST HUNT
 
-SLAPJAM #2（テーマ **Speed**）向け、スマホ縦画面の短編3D心霊写真ゲーム。**実装済みのプレイアブル版**。デスクトップChromeのスマホ画面エミュレーションで3幕の完走とリプレイを確認。iPhone Safari／Android Chromeの実機検証・itch.io提出は未実施。
+SLAPJAM #2（テーマ **Speed**）向け、スマホ縦画面の短編3D心霊写真ゲーム。**3幕を完走できる公開版**。デスクトップChromeのスマホ画面エミュレーションで3幕の完走とリプレイを確認。iPhone Safari／Android Chromeの実機検証は未実施。itch.ioのジャム提出は締切済みで、GitHub PagesのWeb版を公開中。
 
 ## 何を遊ぶか
 
@@ -19,7 +19,7 @@ SLAPJAM #2（テーマ **Speed**）向け、スマホ縦画面の短編3D心霊�
 - [STORY.md](STORY.md)：1987年の怪異調査という世界観、フレーバーテキスト原案、未実装の死亡演出案。
 - [docs/adr/0001-core-camera-loop.md](docs/adr/0001-core-camera-loop.md)：固定視点・露光式撮影に決めた理由と却下案。
 
-3幕まで実装しGitHub Pages上でクリアとリプレイを確認。残作業はiPhone Safari／Android Chrome実機での手触り確認とitch.io提出。
+3幕まで実装しGitHub Pages上でクリアとリプレイを確認。Web版の実装・配布ビルドは完成。残る外部確認はiPhone Safari／Android Chrome実機での手触りと第三者の恐怖の評価。Slapjam #2の提出受付は終了。
 
 ## ジャム要件（2026-10-30確認）
 
@@ -27,7 +27,7 @@ SLAPJAM #2（テーマ **Speed**）向け、スマホ縦画面の短編3D心霊�
 - 48時間：2026-10-29 15:00 UTC〜10-31 15:00 UTC（**日本時間11月1日 00:00締切**）。
 - 提出：itch.io のジャムページ経由で、スマホ縦画面で動くブラウザ版 HTML5。
 - 審査：Fun / Visual Appeal / Theme Following の等重み。
-- AIツールを使い、提出ページで実際に使用したツールを申告する。締切後にビルドは更新できない。
+- AIツールを使い、提出ページで実際に使用したツールを申告する。締切後にジャムへの新規提出・ビルド更新はできない（2026-11-01現在、受付終了）。
 - 公式：https://itch.io/jam/slapjam-ai-2 / https://slapjam.ai/
 
 ## GitHub Pages 試遊版
@@ -49,7 +49,7 @@ pnpm build
 ./scripts/build-itch.sh
 ```
 
-最後のコマンドで `release/long-exposure-slapjam2.zip` を生成する（zip内の直下にindex.html）。itch.ioに公開するまで提出完了ではない。
+最後のコマンドで `release/long-exposure-slapjam2.zip` を生成する（zip内の直下にindex.html）。一般のitch.ioには未アップロード。Slapjam #2への新規提出期限は終了済み。
 
 ## Blenderの小道具
 
@@ -76,4 +76,6 @@ pnpm build
 - [x] 教室の質感、幽霊の発見の手がかり、露光中の視覚信号、シャッター反動、現像演出、環境音を改良
 - [x] GitHub Pagesへ静的ビルドを公開し、公開URLから3幕を完走・リプレイまで検証
 - [ ] iPhone Safari / Android Chrome実機での調整
-- [ ] 完成版・itch.io上での実プレイ確認・提出
+- [x] GitHub Pagesの公開版とHTML5配布ZIPを用意
+- [ ] 実機・第三者試遊（手元のChrome操作のみでは代替できない）
+- [ ] 一般のitch.ioページへの公開（Slapjam #2への期限後提出は不可）

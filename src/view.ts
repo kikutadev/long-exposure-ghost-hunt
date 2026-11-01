@@ -36,7 +36,7 @@ export const GAME_MARKUP = `
       <div class="intro-bottom"><p>ROOM 3-2 / SEALED 1987<br/>CAMERA RECOVERED ON SITE.</p><button id="start-button" class="primary-button">ENTER THE CLASSROOM <span>↗</span></button><p class="intro-foot">DRAG TO LOOK · HOLD & RELEASE TO SHOOT<br/>HEADPHONES RECOMMENDED</p></div>
     </section>
     <section class="screen result-screen hidden" id="result">
-      <div class="result-head"><span id="shot-num">PHOTO 001</span><span>ANOMALY DETECTED</span></div>
+      <div class="result-head"><span id="shot-num">PHOTO 001</span><span id="result-head-status">ANOMALY DETECTED</span></div>
       <div class="print-frame"><div class="print-photo"><img id="photo-result" alt="Captured paranormal photograph" /></div><div class="print-caption"><span id="print-subject">LONG EXPOSURE</span><span id="print-time">0.00s</span></div></div>
       <div class="result-bottom"><div id="result-label">TOO DARK</div><p id="result-description">The light was too faint.</p><button id="result-action" class="primary-button">RETRY <span>↗</span></button></div>
     </section>

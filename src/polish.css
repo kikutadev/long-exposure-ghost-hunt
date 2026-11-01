@@ -60,3 +60,11 @@
 
 /* The collision is the entire screen; no residual clock or hint over its face. */
 #game[data-phase="dying"] .hud{opacity:0!important;visibility:hidden;transition:none!important}
+
+/* The decision is whether the image is worth the risk, not a stopwatch quiz.
+   Preserve the shutter's alignment without reserving an empty clickable box. */
+#game[data-phase="opening"] .controls-info,
+#game[data-phase="exposing"] .controls-info{opacity:0;visibility:hidden}
+.album-button:disabled{opacity:.28;cursor:default;pointer-events:none}
+#replay:disabled{opacity:0;pointer-events:none}
+#replay:not(:disabled){transition:opacity .24s ease}

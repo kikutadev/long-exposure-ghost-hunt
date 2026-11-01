@@ -81,6 +81,7 @@ function syncHUD() {
   ][act];
   $('#exposure-value').innerHTML = `${exposureSeconds.toFixed(2)}<span>s</span>`;
   $('#sound').textContent = sound.isEnabled ? '♫' : '♪̸';
+  $<HTMLButtonElement>('#album-button').disabled = photos.length === 0;
 }
 
 function startGame() {
@@ -111,6 +112,7 @@ function advance() {
   if (act === 2) {
     setPhase('end'); endingClick = false;
     endPanel.classList.remove('last-click');
+    $<HTMLButtonElement>('#replay').disabled = true;
     $('#end-record').classList.add('hidden');
     resultPanel.classList.add('hidden');
     $('#hud').classList.remove('ready');
@@ -268,6 +270,7 @@ function showResult() {
   $('#hud').classList.remove('ready');
   $('#photo-result').setAttribute('src', currentPhoto);
   $('#shot-num').textContent = `PHOTO ${String(shots).padStart(3,'0')}`;
+  $('#result-head-status').textContent = currentResult?.success ? 'ANOMALY DETECTED' : 'UNVERIFIED FRAME';
   $('#print-time').textContent = `${exposureSeconds.toFixed(2)}s`;
   $('#print-subject').textContent = currentResult?.success ? RECORDS[act].name : 'LONG EXPOSURE';
   $('#result-label').textContent = currentResult?.label ?? 'UNKNOWN';
@@ -388,6 +391,7 @@ function frame(tMs: number) {
     endingClick = true; sound.close();
     endPanel.classList.add('last-click');
     $('#end-record').classList.remove('hidden');
+    $<HTMLButtonElement>('#replay').disabled = false;
   }
   if (phase === 'look' || exposing || phase === 'closing') world.render();
 }

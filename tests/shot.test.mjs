@@ -23,7 +23,7 @@ test('too little light is not a successful exposure', () => {
 test('a still, fully exposed ghost produces a clear picture', () => {
   const result = evaluateShot(frames(36), 0, 1.2, center);
   assert.equal(result.success, true);
-  assert.equal(result.label, 'CRYSTAL CLEAR');
+  assert.equal(result.label, 'CAPTURED');
   assert.ok(result.quality >= 75);
 });
 

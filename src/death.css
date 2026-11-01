@@ -1,7 +1,7 @@
 /* Death: the photograph turns into a trap. No score UI or same-stage retry. */
-#game.fatal-warning .vignette{background:radial-gradient(ellipse 82% 62% at 50% 44%,transparent 20%,rgba(83,13,17,.23) 64%,rgba(28,1,7,.92) 100%)}
-#game.fatal-warning .reticle-dot{background:#ffa49f;box-shadow:0 0 23px #fd605b}
-#game.fatal-warning #signal-label{color:#f8ada3;opacity:1}
+#game.fatal-warning .vignette{background:radial-gradient(ellipse 82% 62% at 50% 44%,transparent 20%,rgba(8,12,13,.25) 64%,rgba(0,3,5,.94) 100%)}
+#game.fatal-warning .reticle-dot{background:#c3d7cd;box-shadow:0 0 7px rgba(203,229,216,.6)}
+#game.fatal-warning #signal-label{color:#c3d7cd}
 .death-screen{background:radial-gradient(circle at 50% 40%,#192226 0%,#0a0d10 70%,#050709 95%);padding:32px 30px max(38px,calc(25px + env(safe-area-inset-bottom)));justify-content:space-between;isolation:isolate}
 .death-top{display:flex;justify-content:space-between;color:#dbb4aa;font-size:10px;letter-spacing:.13em;position:relative;z-index:3}
 .death-top span{color:#bd7372}

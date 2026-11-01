@@ -49,7 +49,7 @@ export function evaluateShot(samples: readonly GhostSample[], act: number, expos
   const tooLate = act === 2 && samples.some(hasReachedPhotographer);
   const quality = tooLate ? 0 : film.quality;
   const success = quality >= 45 && film.visibleTime >= .10;
-  let label = success ? (quality >= 75 ? 'CRYSTAL CLEAR' : 'GHOST CAPTURED') : 'TOO DARK';
+  let label = success ? (quality >= 75 ? 'CAPTURED' : 'RECORDED') : 'TOO DARK';
   let description = success ? 'The presence is recorded.' : 'Not enough light. Hold the shutter longer.';
   if (!success) {
     if (tooLate) { label = 'TOO LATE'; description = 'It reached the lens before you let go.'; }
