@@ -68,3 +68,47 @@
 .album-button:disabled{opacity:.28;cursor:default;pointer-events:none}
 #replay:disabled{opacity:0;pointer-events:none}
 #replay:not(:disabled){transition:opacity .24s ease}
+/* The ending index is an archival sheet, not another row of game HUD cards. */
+.endings-link{
+  flex:none;display:flex;align-items:center;justify-content:space-between;
+  gap:12px;width:100%;min-height:44px;padding:8px 2px;
+  background:none;border:0;border-bottom:1px solid rgba(182,208,198,.35);
+  font:500 10px 'DM Mono',monospace;letter-spacing:.16em;color:#c8d9d0;
+  text-align:left
+}
+.endings-link span{color:#e2ece4;font-size:12px;letter-spacing:.12em}
+.endings-link:active{color:white}
+.intro-screen .endings-link{margin-top:8px}
+.end-screen .endings-link{margin-top:auto;margin-bottom:12px}
+.death-screen .endings-link{margin-top:7px;color:#dec5bb;border-color:rgba(222,196,188,.3)}
+.death-screen .endings-link span{color:#ead5cd}
+.endings-archive{
+  position:absolute;inset:0;z-index:42;display:flex;flex-direction:column;
+  background:#0a1214;padding:31px 30px max(29px,env(safe-area-inset-bottom));
+  overflow:auto;overscroll-behavior:contain
+}
+.ending-archive-head{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:9px;letter-spacing:.12em;color:#94a99f}
+.ending-archive-head .outline-button{min-height:44px;flex:none}
+.endings-archive-body{margin:auto 0}
+.ending-archive-kicker{font-size:9px;color:#7e9a90;letter-spacing:.2em;margin-top:26px}
+.endings-archive h2{font:700 clamp(56px,16vw,86px)/.9 'Barlow Condensed',sans-serif;letter-spacing:-.025em;margin:12px 0 20px}
+.endings-archive h2 span{font:400 12px 'DM Mono',monospace;letter-spacing:.12em;float:right;margin-top:27px;color:#b6d1c3}
+.ending-archive-rule{height:1px;background:#80988b;opacity:.55}
+.ending-entry{display:grid;grid-template-columns:28px minmax(0,1fr) auto;column-gap:12px;align-items:center;padding:15px 0;border-bottom:1px solid rgba(131,159,146,.28)}
+.ending-index{font-size:10px;color:#7e968b}
+.ending-name{font:600 24px/.94 'Barlow Condensed',sans-serif;letter-spacing:.025em;color:#d9e7db}
+.ending-caption{font:400 8px/1.7 'DM Mono',monospace;letter-spacing:.06em;color:#98aca1;margin-top:5px}
+.ending-entry.unseen .ending-name{color:#52625c;letter-spacing:.11em}
+.ending-entry.unseen .ending-caption{color:#64776d}
+.ending-state{font-size:8px;letter-spacing:.08em;color:#a4d5c2}
+.ending-entry.unseen .ending-state{color:#748b7e}
+.endings-archive-foot{text-align:center;font:400 8px/1.7 'DM Mono',monospace;letter-spacing:.12em;color:#627e72;margin:24px 0 0}
+@media(max-height:700px){
+  .endings-archive{padding:18px 22px 16px}
+  .ending-entry{padding:11px 0}
+  .ending-name{font-size:21px}
+  .endings-archive h2{margin:8px 0 13px}
+  .ending-archive-kicker{margin-top:14px}
+  .endings-archive-foot{margin-top:15px}
+  .intro-screen .endings-link{min-height:38px;margin-top:5px}
+}

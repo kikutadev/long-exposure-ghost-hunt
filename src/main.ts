@@ -9,6 +9,7 @@ import { evaluateShot, assessFatalExposure, exposureLimit, formExposure, type De
 import { bindCameraInput } from './input';
 import { ExposureSession } from './exposure-session';
 import { DeathScreen } from './death-screen';
+import { ENDINGS, EndingArchive, type EndingId } from './endings';
 
 type Phase = 'intro' | 'look' | 'opening' | 'exposing' | 'closing' | 'develop' | 'result' | 'album' | 'end' | 'dying' | 'dead';
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -32,9 +33,11 @@ const albumPanel = $('#album');
 const endPanel = $('#end');
 const deathPanel = $('#death');
 const deathScreen = new DeathScreen(deathPanel, import.meta.env.BASE_URL);
+const endingArchive = new EndingArchive();
 const capture = new ExposureSession();
 const hint = $('#hint');
 const iris = new ShutterIris($('#iris-overlay'), $('#blades'));
+let endingReturnFocus: HTMLElement | null = null;
 
 const photos: string[] = [];
 const photoTimes: number[] = [];
@@ -69,6 +72,37 @@ const RECORDS = [
   { name: 'THE ONE WHO RUNS', note: 'The chairs move toward the door. It never opens.' },
   { name: 'THE ONE WHO WATCHES', note: 'It moves closer when the shutter is open.' }
 ] as const;
+
+function syncEndingCounts() {
+  const count = `${String(endingArchive.count).padStart(2, '0')} / 04`;
+  for (const selector of ['#endings-count', '#endings-count-end', '#endings-count-death', '#endings-total'])
+    $(selector).textContent = count;
+}
+function unlockEnding(id: EndingId) {
+  endingArchive.unlock(id);
+  syncEndingCounts();
+}
+function openEndingArchive(button: HTMLElement) {
+  endingReturnFocus = button;
+  $('#endings-list').innerHTML = ENDINGS.map((ending, index) => {
+    const seen = endingArchive.has(ending.id);
+    return `<div class="ending-entry${seen ? '' : ' unseen'}">
+      <span class="ending-index">0${index + 1}</span><div>
+        <div class="ending-name">${seen ? ending.title : '????????'}</div>
+        <div class="ending-caption">${seen ? ending.note : 'RECORD NOT FOUND'}</div>
+      </div><span class="ending-state">${seen ? 'SEEN' : '—'}</span></div>`;
+  }).join('');
+  syncEndingCounts();
+  document.querySelectorAll<HTMLElement>('.screen').forEach(panel => { panel.inert = true; });
+  $('#endings-archive').classList.remove('hidden');
+  $<HTMLButtonElement>('#endings-close').focus();
+}
+function closeEndingArchive() {
+  $('#endings-archive').classList.add('hidden');
+  document.querySelectorAll<HTMLElement>('.screen').forEach(panel => { panel.inert = false; });
+  endingReturnFocus?.focus();
+  endingReturnFocus = null;
+}
 
 function setPhase(next: Phase) { phase = next; game.dataset.phase = next; phaseStarted = performance.now() / 1000; }
 function syncHUD() {
@@ -114,6 +148,7 @@ function advance() {
     endPanel.classList.remove('last-click');
     $<HTMLButtonElement>('#replay').disabled = true;
     $('#end-record').classList.add('hidden');
+    $('#endings-open-end').classList.add('hidden');
     resultPanel.classList.add('hidden');
     $('#hud').classList.remove('ready');
     const endPhotos = $('#end-photos');
@@ -241,6 +276,16 @@ bindCameraInput(canvas, shutter, {
   }
 });
 $('#start-button').addEventListener('click', startGame);
+for (const selector of ['#endings-open', '#endings-open-death', '#endings-open-end']) {
+  const button = $<HTMLButtonElement>(selector);
+  button.addEventListener('click', () => openEndingArchive(button));
+}
+$('#endings-close').addEventListener('click', closeEndingArchive);
+window.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && !$('#endings-archive').classList.contains('hidden')) {
+    event.preventDefault(); closeEndingArchive();
+  }
+});
 $('#result-action').addEventListener('click', () => { if (phase === 'result') advance(); });
 // A developing tap only reveals this print, never also advances or starts a shot.
 resultPanel.addEventListener('click', event => {
@@ -300,6 +345,7 @@ function frame(tMs: number) {
     if (age >= .82) {
       setPhase('dead');
       deathScreen.show(deathCause ?? 'OVEREXPOSED', act, world.capture());
+      unlockEnding(act === 0 ? 'seen' : act === 1 ? 'run-through' : 'reached');
     }
     return;
   }
@@ -391,6 +437,8 @@ function frame(tMs: number) {
     endingClick = true; sound.close();
     endPanel.classList.add('last-click');
     $('#end-record').classList.remove('hidden');
+    unlockEnding('fourth');
+    $('#endings-open-end').classList.remove('hidden');
     $<HTMLButtonElement>('#replay').disabled = false;
   }
   if (phase === 'look' || exposing || phase === 'closing') world.render();
@@ -401,7 +449,7 @@ async function boot() {
     await world.load();
     $('#loading').classList.add('hidden');
     world.setAct(0);
-    syncHUD(); iris.draw(1);
+    syncHUD(); syncEndingCounts(); iris.draw(1);
     world.render();
     requestAnimationFrame(frame);
   } catch (error) {
