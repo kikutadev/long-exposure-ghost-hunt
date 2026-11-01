@@ -132,6 +132,7 @@ function prepareLook() {
   setPhase('look');
   exposureSeconds = 0;
   capture.reset();
+  sound.restoreRoomTone();
   world.clearExposure();
   game.classList.remove('fatal-warning');
   resultPanel.classList.add('hidden');
@@ -361,9 +362,9 @@ function frame(tMs: number) {
     }
     $('#exposure-value').innerHTML = `${exposureSeconds.toFixed(2)}<span>s</span>`;
     // The image is the exposure meter. No score or release instruction during a shot.
-    $('#signal-label').textContent = danger.warning ? (act === 2 ? 'IT IS COMING' : 'THE FILM IS BURNING') : 'EXPOSING';
+    $('#signal-label').textContent = 'EXPOSING';
     sound.expose(exposureSeconds, act, capture.samples.at(-1),
-      act === 2 && world.observationAge !== null && exposureSeconds - world.observationAge < .15);
+      act === 2 && world.observationAge !== null && exposureSeconds - world.observationAge < .20);
     if (phase === 'opening' && t - irisStart > .12) setPhase('exposing');
     if (phase !== 'dead' && exposureSeconds >= exposureLimit(act)) endExposure(true);
   }

@@ -56,4 +56,7 @@
 .clue{transition:opacity .13s ease}
 #game[data-phase="opening"] .clue,#game[data-phase="exposing"] .clue{opacity:0}
 #game[data-phase="opening"] .signal-display,#game[data-phase="exposing"] .signal-display{opacity:0}
-#game.fatal-warning[data-phase="exposing"] .signal-display{opacity:.85}
+
+
+/* The collision is the entire screen; no residual clock or hint over its face. */
+#game[data-phase="dying"] .hud{opacity:0!important;visibility:hidden;transition:none!important}

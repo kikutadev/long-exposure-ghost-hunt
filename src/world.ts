@@ -352,7 +352,7 @@ export class GhostWorld {
     const fastDip = exposing && fastSample?.visible && Math.abs(fastSample.x) < .55;
     const nearSample = this.act === 2 && exposing ? this.positionAt(time, exposureAge) : null;
     const watching = this.recognizedAt !== null && exposing && this.act === 2;
-    const heldBreath = watching && exposureAge - this.recognizedAt! < .15;
+    const heldBreath = watching && exposureAge - this.recognizedAt! < .20;
     const nearDip = nearSample && !nearSample.visible;
     const dim = firstDip ? .46 : fastDip ? .62 : nearDip ? .23 : heldBreath ? .72 : 1;
     this.flicker.intensity = ((this.act === 2 ? 2.2 : 5) + glitch) * dim;
@@ -383,7 +383,11 @@ export class GhostWorld {
           const cueAge = exposing ? exposureAge
             : (chair.z === -5.7 && idlePulse > 2.8 ? Math.min(.44, (idlePulse - 2.8) * .65) : 0);
           const cueOffset = chair.z === -5.7 ? .25 : chair.z === -3.25 ? .73 : 1.16;
-          elapsed = cueAge - cueOffset;
+          // The far chair warns before recognition. The next two jolt as the
+          // ghost acknowledges the lens and materializes closer to the player.
+          elapsed = exposing && this.recognizedAt !== null && chair.z !== -5.7
+            ? exposureAge - this.recognizedAt - (chair.z === -3.25 ? .04 : .27)
+            : cueAge - cueOffset;
         }
         chair.mixer.setTime(Math.max(0, Math.min(chair.duration, elapsed)));
       }
@@ -478,7 +482,7 @@ export class GhostWorld {
       // cannot invent a new face angle or realistic foreshortened fingers.
       const reaction = exposureSeconds - this.recognizedAt;
       const seen = fixed(reaction / .12, 0, 1);
-      const strike = fixed((reaction - .32) / .18, 0, 1);
+      const strike = fixed((reaction - .31) / .13, 0, 1);
       (main.material as THREE.SpriteMaterial).opacity = opacity * (1 - seen);
       main.visible = primary.visible && seen < 1;
       const [recognition, attack] = this.nearPoseSprites;

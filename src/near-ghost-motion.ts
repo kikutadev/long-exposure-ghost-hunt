@@ -23,13 +23,13 @@ export function nearGhostSample(t: number, age: number, recognizedAt: number | n
     const reaction = age - recognizedAt;
     const holdZ = -6.4 + Math.pow(clamp(recognizedAt / 1.95), 1.8) * 10.7;
     // The ghost notices the camera and FREEZES. The stillness is a warning.
-    if (reaction < .15) z = holdZ;
-    else if (reaction < .22) { z = holdZ; visible = false; }
-    else if (reaction < .51) {
-      // Not a smooth camera-facing walk: it is suddenly several desks closer.
-      const rush = clamp((reaction - .22) / .29);
+    if (reaction < .20) z = holdZ;
+    else if (reaction < .26) { z = holdZ; visible = false; }
+    else if (reaction < .49) {
+      // A visible pause followed by an impossible rush between desks.
+      const rush = clamp((reaction - .26) / .23);
       z = -1.65 + 1.25 * (rush * rush);
-    } else if (reaction < .57) { z = -.4; visible = false; }
+    } else if (reaction < .55) { z = -.4; visible = false; }
     else z = PHOTOGRAPHER_POSITION.z - 1.52; // lethal at materialization, never a timed "free pass"
   }
   return {

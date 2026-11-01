@@ -30,6 +30,7 @@ export class Sound {
     } catch { this.ctx = null; }
   }
   pause() { if (this.ctx) void this.ctx.suspend(); }
+  restoreRoomTone() { this.holdBreath(false); }
   private holdBreath(silent: boolean) {
     if (silent === this.ambienceDucked || !this.ctx || !this.ambientMix) return;
     this.ambienceDucked = silent;
@@ -147,9 +148,14 @@ export class Sound {
     }
     // Mechanical transport / approaching pressure, not a correct-time chime.
     if (act === 2 && this.previousPresenceVisible && !presenceVisible) {
-      // Use actual disappearance, not a fixed clock; every approach may differ.
+      // The camera loses its subject at the same instant as the disappearance.
       this.noise(.045, .024, 480);
       this.tone(63, .12, .023, 'triangle', 36);
+    } else if (act === 2 && !this.previousPresenceVisible && presenceVisible) {
+      // A hard footfall, not another constant drone: something just appeared
+      // much closer to the operator. It follows actual visibility, not a timer.
+      this.noise(.14, .060, 205);
+      this.tone(71, .18, .075, 'triangle', 31);
     }
     this.previousPresenceVisible = presenceVisible;
     // The brief missing ghost also interrupts the camera's film transport.

@@ -11,8 +11,8 @@ test('recognition makes the subject stop, then disappear and reappear closer', (
   const at = .64;
   const frozen = [at+.02,at+.1,at+.14].map(age => nearGhostSample(age,age,at));
   assert.ok(frozen.every(s => s.visible && s.z === frozen[0].z));
-  const vanished = nearGhostSample(at+.18,at+.18,at);
-  const returned = nearGhostSample(at+.23,at+.23,at);
+  const vanished = nearGhostSample(at+.23,at+.23,at);
+  const returned = nearGhostSample(at+.27,at+.27,at);
   assert.equal(vanished.visible, false);
   assert.equal(returned.visible,true);
   assert.ok(returned.z > frozen[0].z + 2);
