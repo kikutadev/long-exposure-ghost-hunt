@@ -52,7 +52,27 @@ export const GAME_MARKUP = `
     <section id="endings-archive" class="endings-archive hidden" role="dialog" aria-modal="true" aria-labelledby="endings-title">
       <div class="ending-archive-head"><span>CASE FILE / RECORDED OUTCOMES</span><button id="endings-close" class="outline-button" type="button">✕ CLOSE</button></div>
       <div class="endings-archive-body"><div class="ending-archive-kicker">OBSERVATION LOG</div><h2 id="endings-title">ENDINGS<span id="endings-total">00 / 04</span></h2><div class="ending-archive-rule"></div><div id="endings-list" class="endings-list"></div></div>
+      <button id="secret-rewatch" type="button" class="endings-secret-button hidden">VIEW FINAL RECORD <span>↗</span></button>
       <p class="endings-archive-foot">RECORDS ARE SAVED ON THIS DEVICE.</p>
+    </section>
+    <section id="secret" class="secret-screen hidden" role="dialog" aria-modal="true" aria-label="Final exposure" data-beat="0">
+      <div class="secret-top"><span>ARCHIVE / 04 OF 04</span><button id="secret-skip" type="button" class="secret-skip">✕ CLOSE</button></div>
+      <div class="secret-stage">
+        <div class="secret-camera-window">
+          <div class="secret-negative">
+            <img class="secret-ghost secret-ghost-one" src="${import.meta.env.BASE_URL}assets/ghost-base-noticed.webp" alt="" />
+            <img class="secret-ghost secret-ghost-two" src="${import.meta.env.BASE_URL}assets/ghost-fast-launch.webp" alt="" />
+            <img class="secret-ghost secret-ghost-three" src="${import.meta.env.BASE_URL}assets/ghost-near-recognition.webp" alt="" />
+            <div class="secret-empty"><span>EXPOSURE 004</span><strong>OPERATOR: UNKNOWN</strong></div>
+            <div class="secret-lens"><div class="secret-glass"><div class="secret-operator"></div></div></div>
+            <div class="secret-film-noise"></div>
+            <div class="secret-corner tl"></div><div class="secret-corner tr"></div><div class="secret-corner bl"></div><div class="secret-corner br"></div>
+          </div>
+        </div>
+        <div class="secret-plate"><span>NEGATIVE <span id="secret-index">001</span></span><span id="secret-signal">RECOVERED</span></div>
+      </div>
+      <div class="secret-revelation" aria-live="polite"><div class="secret-exposure-label">FINAL EXPOSURE</div><div class="secret-title">SUBJECT<br/>005: YOU.</div><p>DO NOT MOVE.</p></div>
+      <button id="secret-return" class="primary-button secret-return hidden" type="button">RETURN TO ENDINGS <span>↗</span></button>
     </section>
     <div id="rotate" class="rotate-screen"><div>▣</div><h2>ROTATE YOUR DEVICE</h2><p>Best experienced in portrait mode.</p></div>
     <div id="loading"><div class="load-mark">◌</div>LOADING FILM...</div>

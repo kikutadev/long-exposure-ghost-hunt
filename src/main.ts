@@ -11,7 +11,7 @@ import { ExposureSession } from './exposure-session';
 import { DeathScreen } from './death-screen';
 import { ENDINGS, EndingArchive, type EndingId } from './endings';
 
-type Phase = 'intro' | 'look' | 'opening' | 'exposing' | 'closing' | 'develop' | 'result' | 'album' | 'end' | 'dying' | 'dead';
+type Phase = 'intro' | 'look' | 'opening' | 'exposing' | 'closing' | 'develop' | 'result' | 'album' | 'end' | 'dying' | 'dead' | 'secret';
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const $ = <T extends HTMLElement>(selector: string): T => {
   const element = document.querySelector<T>(selector);
@@ -32,12 +32,16 @@ const resultPanel = $('#result');
 const albumPanel = $('#album');
 const endPanel = $('#end');
 const deathPanel = $('#death');
+const secretPanel = $('#secret');
 const deathScreen = new DeathScreen(deathPanel, import.meta.env.BASE_URL);
 const endingArchive = new EndingArchive();
 const capture = new ExposureSession();
 const hint = $('#hint');
 const iris = new ShutterIris($('#iris-overlay'), $('#blades'));
 let endingReturnFocus: HTMLElement | null = null;
+let secretOrigin: Phase = 'intro';
+let secretElapsed = 0;
+let secretBeat = 0;
 
 const photos: string[] = [];
 const photoTimes: number[] = [];
@@ -79,8 +83,9 @@ function syncEndingCounts() {
     $(selector).textContent = count;
 }
 function unlockEnding(id: EndingId) {
-  endingArchive.unlock(id);
+  const newlySeen = endingArchive.unlock(id);
   syncEndingCounts();
+  if (newlySeen && endingArchive.count === ENDINGS.length) startSecret();
 }
 function openEndingArchive(button: HTMLElement) {
   endingReturnFocus = button;
@@ -93,6 +98,7 @@ function openEndingArchive(button: HTMLElement) {
       </div><span class="ending-state">${seen ? 'SEEN' : '—'}</span></div>`;
   }).join('');
   syncEndingCounts();
+  $('#secret-rewatch').classList.toggle('hidden', endingArchive.count !== ENDINGS.length);
   document.querySelectorAll<HTMLElement>('.screen').forEach(panel => { panel.inert = true; });
   $('#endings-archive').classList.remove('hidden');
   $<HTMLButtonElement>('#endings-close').focus();
@@ -102,6 +108,32 @@ function closeEndingArchive() {
   document.querySelectorAll<HTMLElement>('.screen').forEach(panel => { panel.inert = false; });
   endingReturnFocus?.focus();
   endingReturnFocus = null;
+}
+
+function startSecret() {
+  if (phase === 'secret' || endingArchive.count !== ENDINGS.length) return;
+  sound.start();
+  if (!$('#endings-archive').classList.contains('hidden')) closeEndingArchive();
+  secretOrigin = phase;
+  secretElapsed = 0;
+  secretBeat = 0;
+  secretPanel.dataset.beat = '0';
+  $('#secret-index').textContent = '001';
+  $('#secret-signal').textContent = 'RECOVERED';
+  $('#secret-return').classList.add('hidden');
+  document.querySelectorAll<HTMLElement>('.screen').forEach(panel => { panel.inert = true; });
+  secretPanel.classList.remove('hidden');
+  setPhase('secret');
+  $<HTMLButtonElement>('#secret-skip').focus();
+}
+function finishSecret() {
+  if (phase !== 'secret') return;
+  secretPanel.classList.add('hidden');
+  document.querySelectorAll<HTMLElement>('.screen').forEach(panel => { panel.inert = false; });
+  setPhase(secretOrigin);
+  const opener = secretOrigin === 'dead' ? '#endings-open-death'
+    : secretOrigin === 'end' ? '#endings-open-end' : '#endings-open';
+  openEndingArchive($<HTMLButtonElement>(opener));
 }
 
 function setPhase(next: Phase) { phase = next; game.dataset.phase = next; phaseStarted = performance.now() / 1000; }
@@ -281,6 +313,9 @@ for (const selector of ['#endings-open', '#endings-open-death', '#endings-open-e
   button.addEventListener('click', () => openEndingArchive(button));
 }
 $('#endings-close').addEventListener('click', closeEndingArchive);
+$('#secret-rewatch').addEventListener('click', startSecret);
+$('#secret-skip').addEventListener('click', finishSecret);
+$('#secret-return').addEventListener('click', finishSecret);
 window.addEventListener('keydown', event => {
   if (event.key === 'Escape' && !$('#endings-archive').classList.contains('hidden')) {
     event.preventDefault(); closeEndingArchive();
@@ -339,6 +374,24 @@ function frame(tMs: number) {
   const dt = lastTime ? clamp(t - lastTime, 0, .06) : 0;
   lastTime = t;
   if (document.hidden || matchMedia('(orientation:landscape) and (max-height:540px)').matches) return;
+  if (phase === 'secret') {
+    secretElapsed += dt;
+    const beat = matchMedia('(prefers-reduced-motion: reduce)').matches ? 5
+      : secretElapsed < .55 ? 0 : secretElapsed < 1.10 ? 1
+      : secretElapsed < 1.65 ? 2 : secretElapsed < 2.45 ? 3
+      : secretElapsed < 3.35 ? 4 : 5;
+    if (beat !== secretBeat) {
+      secretBeat = beat;
+      secretPanel.dataset.beat = String(beat);
+      $('#secret-index').textContent = ['001', '002', '003', '004', '005', '005'][beat];
+      $('#secret-signal').textContent = beat < 3 ? 'RECOVERED'
+        : beat === 3 ? 'UNASSIGNED' : 'RECORDING';
+      if (beat <= 2) sound.cue();
+      if (beat === 4) { sound.close(); sound.tone(61, .85, .10, 'triangle', 31); }
+      if (beat === 5) $('#secret-return').classList.remove('hidden');
+    }
+    return;
+  }
   if (phase === 'dying') {
     const age = t - phaseStarted;
     world.renderFatal(age, matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -461,5 +514,5 @@ void boot();
 
 // Test-only read access to player state (no cheats or public API).
 Object.defineProperty(window, '__longExposureState', {
-  get: () => ({ phase, act, photos: photos.length, shots, exposureSeconds, quality: currentResult?.quality, label: currentResult?.label, deathCause })
+  get: () => ({ phase, act, photos: photos.length, shots, exposureSeconds, quality: currentResult?.quality, label: currentResult?.label, deathCause, secretBeat })
 });
