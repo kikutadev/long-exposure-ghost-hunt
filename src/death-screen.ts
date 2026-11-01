@@ -2,10 +2,10 @@ import type { DeathCause } from './shot';
 
 const GHOST_IMAGES = ['ghost-base.png', 'ghost-fast.png', 'ghost-near.png'];
 
-export function deathDescription(cause: DeathCause) {
-  return cause === 'TOO CLOSE'
-    ? 'IT CAME TOO CLOSE. YOUR CAMERA COULD NOT SAVE YOU.'
-    : 'YOU HELD THE SHUTTER OPEN. IT FOUND ITS WAY THROUGH.';
+export function deathDescription(cause: DeathCause, act = 0) {
+  if (cause === 'TOO CLOSE') return 'IT CAME TOO CLOSE. YOUR CAMERA COULD NOT SAVE YOU.';
+  if (act === 1) return 'YOU HELD THE SHUTTER OPEN. THE FILM BURNED AWAY.';
+  return 'YOU HELD THE SHUTTER OPEN. IT FOUND ITS WAY THROUGH.';
 }
 
 /** Only presents a death. The game loop owns fatal detection and input lockout. */
@@ -35,8 +35,9 @@ export class DeathScreen {
   show(cause: DeathCause, act: number, finalFrame?: string) {
     this.ghost.src = finalFrame ?? `${this.assetsBaseUrl}assets/${GHOST_IMAGES[act]}`;
     this.ghost.alt = finalFrame ? 'The camera’s final view of the classroom' : 'A presence by the camera';
-    if (this.heading) this.heading.textContent = cause === 'TOO CLOSE' ? 'IT REACHED\nYOU.' : 'YOU WERE\nSEEN.';
-    this.reason.textContent = deathDescription(cause);
+    if (this.heading) this.heading.textContent = cause === 'TOO CLOSE' ? 'IT REACHED\nYOU.'
+      : act === 1 ? 'EXPOSURE\nLOST.' : 'YOU WERE\nSEEN.';
+    this.reason.textContent = deathDescription(cause, act);
     this.panel.classList.remove('hidden', 'death-arrive');
     // Restart CSS animation on a subsequent death, even after RESTART.
     void this.panel.offsetHeight;
