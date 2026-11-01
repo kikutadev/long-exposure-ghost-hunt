@@ -36,6 +36,7 @@ export class GhostWorld {
   private nearGhostEnabled = false;
   private nearPoseSprites: THREE.Sprite[] = [];
   private fastPoseTextures: THREE.Texture[] = [];
+  private baseNoticedSprite: THREE.Sprite | null = null;
   private recognizedAt: number | null = null;
   private flicker: THREE.PointLight;
   private frontFluorescent!: THREE.MeshStandardMaterial;
@@ -78,7 +79,7 @@ export class GhostWorld {
 
   async load() {
     const loader = new THREE.TextureLoader();
-    const names = ['ghost-base.png', 'ghost-fast-launch.webp', 'ghost-near.png'];
+    const names = ['ghost-base-reading.webp', 'ghost-fast-launch.webp', 'ghost-near.png'];
     this.textures = await Promise.all(names.map(n => loader.loadAsync(`${import.meta.env.BASE_URL}assets/${n}`)));
     const poseTextures = await Promise.all(['recognition', 'attack'].map(
       pose => loader.loadAsync(`${import.meta.env.BASE_URL}assets/ghost-near-${pose}.webp`)
@@ -86,6 +87,8 @@ export class GhostWorld {
     this.fastPoseTextures = [this.textures[1],
       await loader.loadAsync(`${import.meta.env.BASE_URL}assets/ghost-fast-stride.webp`)];
     this.fastPoseTextures.forEach(texture => { texture.colorSpace = THREE.SRGBColorSpace; });
+    const noticedTexture = await loader.loadAsync(`${import.meta.env.BASE_URL}assets/ghost-base-noticed.webp`);
+    noticedTexture.colorSpace = THREE.SRGBColorSpace;
     try {
       await this.nearGhost.load(import.meta.env.BASE_URL + 'assets/ghost-near.riv');
       this.nearGhostEnabled = true;
@@ -143,6 +146,8 @@ export class GhostWorld {
         this.sprites.push(sprite);
       }
     }
+    this.baseNoticedSprite = this.makeGhostSprite(noticedTexture);
+    this.baseNoticedSprite.renderOrder = 11;
     this.nearPoseSprites = poseTextures.map(texture => {
       texture.colorSpace = THREE.SRGBColorSpace;
       const sprite = this.makeGhostSprite(texture);
@@ -294,13 +299,13 @@ export class GhostWorld {
   positionAt(t: number, exposureAge = 0): GhostSample {
     const a = this.act;
     if (a === 0) {
-      // Hold still, jerk beside the book, then become unsettlingly still again.
-      // The exposure sampler sees this movement, so the photograph can blur it.
-      const jerk = fixed((exposureAge - .47) / .085, 0, 1);
+      // The hand stays by the page; a tiny recoil accompanies the sudden gaze.
+      // The actual pose change is an authored image, not an arbitrary PNG slide.
+      const jerk = fixed((exposureAge - .60) / .07, 0, 1);
       return {
-        t, x: -.86 + .14 * jerk + .02 * Math.sin(t * .4),
-        y: 1.55 + .03 * jerk,
-        z: -4.55 + .07 * jerk,
+        t, x: -.86 + .035 * jerk,
+        y: 1.55 + .015 * jerk,
+        z: -4.55,
         visible: true, size: 1.16
       };
     }
@@ -338,7 +343,7 @@ export class GhostWorld {
     const glitch = (Math.sin(time * 5.2) + Math.sin(time * 12.7) * .4) * .09;
     // Brief dips create a perceptible silence/impact pair. They use the same
     // exposure clock as the ghost; no unrelated fullscreen flashes.
-    const firstDip = exposing && this.act === 0 && exposureAge >= .40 && exposureAge < .49;
+    const firstDip = exposing && this.act === 0 && exposureAge >= .54 && exposureAge < .61;
     const fastSample = this.act === 1 ? this.positionAt(time, exposureAge) : null;
     const fastDip = exposing && fastSample?.visible && Math.abs(fastSample.x) < .55;
     const nearSample = this.act === 2 && exposing ? this.positionAt(time, exposureAge) : null;
@@ -353,16 +358,16 @@ export class GhostWorld {
     // Local time is stable across replays and is coupled to the ghost's crossing.
     const pageCycle = ((time - .55) % 4.1 + 4.1) % 4.1;
     if (this.pageMixer) {
-      this.pageMixer.setTime(this.act === 0 ? Math.min(pageCycle, this.pageClipDuration) : 0);
+      this.pageMixer.setTime(this.act === 0 ? Math.min(exposing ? exposureAge : pageCycle, this.pageClipDuration) : 0);
     } else {
       // Fallback if the glTF clip is absent: keep the experience playable.
-      this.book.rotation.z = this.act === 0 ? Math.sin(time * 2.3) * .04 : 0;
+      this.book.rotation.z = this.act === 0 ? Math.sin((exposing ? exposureAge : time) * 2.3) * .04 : 0;
     }
     if (this.animatedChairs.length) {
       for (const chair of this.animatedChairs) {
         let elapsed = -1;
         if (this.act === 0 && chair.x === -2.6 && chair.z === -3.25) {
-          elapsed = pageCycle - 1.04;
+          elapsed = (exposing ? exposureAge : pageCycle) - 1.04;
         } else if (this.act === 1 && chair.z === -3.25) {
           const pass = ((time + .15) % 2.6 + 2.6) % 2.6;
           elapsed = pass - ((2.6 - chair.x) / 5.2) * 1.05;
@@ -394,7 +399,7 @@ export class GhostWorld {
     if (!exposing && this.photoWasExposing) { this.hideGhosts(); this.photoWasExposing = false; }
   }
 
-  hideGhosts() { this.sprites.forEach(s => { s.visible = false; }); this.nearPoseSprites.forEach(s => { s.visible = false; }); }
+  hideGhosts() { this.sprites.forEach(s => { s.visible = false; }); this.nearPoseSprites.forEach(s => { s.visible = false; }); if (this.baseNoticedSprite) this.baseNoticedSprite.visible = false; }
 
   showExposure(samples: GhostSample[], exposureSeconds: number, frozenPhoto = false) {
     this.photoWasExposing = true;
@@ -404,7 +409,8 @@ export class GhostWorld {
     // Act 3's danger is distance, not film bleaching. Keep the face and
     // reaching hand legible even when the accumulated density is high.
     this.filmBleach.value = this.act === 2 ? Math.min(.19, film.bleach * .18)
-      : this.act === 1 ? Math.min(.43, film.bleach * .43) : film.bleach;
+      : this.act === 1 ? Math.min(.43, film.bleach * .43)
+      : Math.min(.10, film.bleach * .12);
     const total = film.weights.reduce((sum, weight) => sum + weight, 0);
     if (!total) return;
     // One readable human figure, with a few faint positional echoes.
@@ -451,7 +457,17 @@ export class GhostWorld {
     // physically threatening. The safe ~0.7s exposure is unaffected.
     const imminent = this.act === 2 ? Math.pow(fixed((exposureSeconds - 1.08) / .5, 0, 1), 1.5) : 0;
     const opacity = Math.min(.98, strength * (this.act === 1 ? 1.16 : .9) + imminent * .36);
-    if (this.act === 2 && this.recognizedAt !== null) {
+    if (this.act === 0 && this.baseNoticedSprite) {
+      // The page turns before the head rises. The body remains pinned beside
+      // the notebook, while the face changes from downcast to direct eye contact.
+      const noticed = fixed((exposureSeconds - .61) / .09, 0, 1);
+      this.baseNoticedSprite.position.copy(main.position);
+      this.baseNoticedSprite.scale.copy(main.scale);
+      (this.baseNoticedSprite.material as THREE.SpriteMaterial).opacity = opacity * noticed;
+      this.baseNoticedSprite.visible = primary.visible && noticed > 0;
+      (main.material as THREE.SpriteMaterial).opacity = opacity * (1 - noticed);
+      main.visible = primary.visible && noticed < 1;
+    } else if (this.act === 2 && this.recognizedAt !== null) {
       // Distinct camera-facing poses are essential: geometry-free Rive warping
       // cannot invent a new face angle or realistic foreshortened fingers.
       const reaction = exposureSeconds - this.recognizedAt;

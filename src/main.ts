@@ -59,6 +59,8 @@ let lastDisturbance = -5;
 let lastFastCue = -1;
 let lastPaperCycle = -1;
 let lastChairCycle = -1;
+let exposurePaperPlayed = false;
+let exposureChairPlayed = false;
 
 
 const sound = new Sound();
@@ -213,6 +215,8 @@ function beginExposure() {
   $('#signal-label').textContent = 'SCANNING...';
   const now = performance.now() / 1000;
   capture.begin(now, worldTime);
+  exposurePaperPlayed = false;
+  exposureChairPlayed = false;
   world.resetObservation();
   exposureSeconds = 0;
   irisDirection = 'open'; irisStart = now;
@@ -310,13 +314,26 @@ function frame(tMs: number) {
     // separate arbitrary alarm clock.
     const cycle = Math.floor((worldTime - .55) / 4.1);
     const age = ((worldTime - .55) % 4.1 + 4.1) % 4.1;
-    if (worldTime >= .55 && age >= .33 && cycle !== lastPaperCycle) {
-      lastPaperCycle = cycle;
-      sound.paperFlip();
-    }
-    if (worldTime >= .55 && age >= 1.14 && cycle !== lastChairCycle) {
-      lastChairCycle = cycle;
-      sound.chairScrape();
+    if (exposing) {
+      // A paper movement actually occurs inside this exposure; it is not just
+      // an unrelated ambient cue on a four-second world clock.
+      if (!exposurePaperPlayed && exposureSeconds >= .36) {
+        exposurePaperPlayed = true;
+        sound.paperFlip();
+      }
+      if (!exposureChairPlayed && exposureSeconds >= 1.16) {
+        exposureChairPlayed = true;
+        sound.chairScrape();
+      }
+    } else {
+      if (worldTime >= .55 && age >= .33 && cycle !== lastPaperCycle) {
+        lastPaperCycle = cycle;
+        sound.paperFlip();
+      }
+      if (worldTime >= .55 && age >= 1.14 && cycle !== lastChairCycle) {
+        lastChairCycle = cycle;
+        sound.chairScrape();
+      }
     }
   }
   if (phase === 'look' && act === 2 && worldTime - lastDisturbance >= 4.6) {

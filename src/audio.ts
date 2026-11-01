@@ -97,9 +97,9 @@ export class Sound {
   }
   expose(seconds: number, act: number, presence?: { visible: boolean; x: number }, heldBreath = false) {
     const presenceVisible = presence?.visible ?? true;
-    if (act === 0 && seconds >= .48 && !this.firstJerkPlayed) {
+    if (act === 0 && seconds >= .62 && !this.firstJerkPlayed) {
       this.firstJerkPlayed = true;
-      // A paper-thin pause breaks with a wooden chair impact.
+      // The hand freezes and the head turns as the page settles.
       this.noise(.09, .030, 225);
       this.tone(112, .12, .025, 'triangle', 62);
     }
