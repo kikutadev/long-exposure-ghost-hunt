@@ -159,31 +159,49 @@
 .secret-empty strong{font:500 14px 'DM Mono',monospace;letter-spacing:.13em;margin-top:10px}
 .secret-screen[data-beat="3"] .secret-empty{opacity:1}
 .secret-screen[data-beat="3"] .secret-negative{background:#030506}
-.secret-lens{position:absolute;left:50%;top:50%;width:92%;aspect-ratio:1;transform:translate(-50%,-50%) scale(.65);
-  border-radius:50%;opacity:0;transition:transform .52s cubic-bezier(.12,.8,.3,1),opacity .26s;
-  border:13px solid #1c2526;box-shadow:0 0 0 2px #5d6b69,0 0 0 11px #080d0f,0 0 0 13px #455458,
-  inset 0 0 0 2px #768b85,inset 0 0 34px #000,0 0 70px rgba(183,215,208,.17);
-  background:radial-gradient(circle at 43% 35%,#293e40 0%,#030809 49%,#000 84%)}
-.secret-glass{position:absolute;inset:12%;border-radius:50%;overflow:hidden;
-  box-shadow:inset 0 0 26px #020405,0 0 2px #809a90;background:
-    radial-gradient(ellipse at 39% 31%,rgba(210,237,227,.19),transparent 19%),
-    radial-gradient(circle at 50% 65%,#18282b,#010303 64%)}
-.secret-operator{position:absolute;inset:0;filter:blur(3px)}
-.secret-operator:before{content:"";position:absolute;left:39%;top:25%;width:22%;height:27%;border-radius:44% 44% 43% 43%;
-  background:#000}
-.secret-operator:after{content:"";position:absolute;left:20%;top:51%;width:60%;height:65%;border-radius:48% 48% 4% 4%;
-  background:#000}
-.secret-screen[data-beat="4"] .secret-lens,
-.secret-screen[data-beat="5"] .secret-lens{opacity:1;transform:translate(-50%,-50%) scale(1.03)}
+/* An actual recovered incident sheet replaces the invented fifth exposure. */
+.secret-evidence{
+  position:absolute;inset:6% 5%;z-index:1;display:flex;flex-direction:column;
+  padding:8% 9%;overflow:hidden;opacity:0;
+  color:#25302c;
+  background:
+    radial-gradient(ellipse at 17% 5%,rgba(65,43,20,.16),transparent 57%),
+    repeating-linear-gradient(0deg,transparent 0 27px,rgba(68,62,48,.11) 28px),
+    linear-gradient(117deg,#c0b79f 0%,#ded5bd 44%,#b8b09b 100%);
+  box-shadow:inset 0 0 29px rgba(36,32,24,.42),0 3px 14px #000;
+  transform:translateY(12%) rotate(-3deg) scale(.94);
+  transition:opacity .26s,transform .45s cubic-bezier(.18,.75,.3,1)
+}
+.secret-evidence:after{content:"";position:absolute;top:0;right:0;bottom:0;width:2px;
+  background:linear-gradient(#4b4533,transparent,#4b4533);opacity:.25}
+.secret-paper-top{display:flex;gap:7px;justify-content:space-between;align-items:center;
+  color:#4e5448;font:600 clamp(6px,1.7vw,8px)/1.4 'DM Mono',monospace;letter-spacing:.02em}
+.secret-paper-title{font:700 clamp(29px,7.8vw,42px)/.84 'Barlow Condensed',sans-serif;
+  letter-spacing:.01em;margin:8% 0 5%;color:#2c3932}
+.secret-paper-rule{width:100%;height:1px;background:#555a4b;opacity:.64;flex:none}
+.secret-paper-entry{display:flex;flex-direction:column;gap:3px;padding:6% 0 5%;border-bottom:1px solid rgba(68,71,54,.25)}
+.secret-paper-entry span{font:600 clamp(30px,8vw,45px)/1 'Barlow Condensed',sans-serif;letter-spacing:-.01em}
+.secret-paper-entry strong{font:600 clamp(9px,2.8vw,12px)/1.3 'DM Mono',monospace;letter-spacing:.08em}
+.secret-paper-last{opacity:0;transform:translateY(7px);transition:opacity .24s,transform .3s}
+.secret-paper-operator{margin-top:5%;display:flex;justify-content:space-between;font:600 9px 'DM Mono',monospace;
+  letter-spacing:.12em;opacity:0;transition:opacity .3s}
+.secret-paper-operator span{font-size:18px;line-height:8px}
+.secret-paper-stamp{position:absolute;right:4%;bottom:3%;border:1px solid #5d6659;
+  padding:6px 7px;transform:rotate(-9deg);opacity:.4;text-align:center;
+  font:700 8px/1.5 'DM Mono',monospace;letter-spacing:.1em}
+.secret-screen[data-beat="4"] .secret-evidence,
+.secret-screen[data-beat="5"] .secret-evidence{opacity:1;transform:translateY(0) rotate(-1.5deg) scale(1)}
+.secret-screen[data-beat="5"] .secret-paper-last{opacity:1;transform:none}
+.secret-screen[data-beat="5"] .secret-paper-operator{opacity:1}
 .secret-screen[data-beat="4"] .secret-negative,
-.secret-screen[data-beat="5"] .secret-negative{background:#05090b}
+.secret-screen[data-beat="5"] .secret-negative{background:#151b18}
 .secret-plate{width:min(79%,320px,42dvh);display:flex;justify-content:space-between;
   margin-top:12px;color:#b0c3b8;font:10px 'DM Mono',monospace;letter-spacing:.14em}
 .secret-revelation{z-index:3;flex:0 0 auto;min-height:110px;display:flex;flex-direction:column;justify-content:end;
   opacity:0;transform:translateY(8px);transition:opacity .22s,transform .32s}
 .secret-screen[data-beat="5"] .secret-revelation{opacity:1;transform:none}
 .secret-exposure-label{font:500 9px 'DM Mono',monospace;letter-spacing:.24em;color:#a4b8a8}
-.secret-title{font:700 clamp(56px,18vw,94px)/.83 'Barlow Condensed',Impact,sans-serif;
+.secret-title{font:700 clamp(49px,15vw,74px)/.88 'Barlow Condensed',Impact,sans-serif;
   letter-spacing:-.025em;color:#edf4e7;margin:9px 0;text-shadow:0 3px 35px #000}
 .secret-revelation p{font:400 10px/1.5 'DM Mono',monospace;letter-spacing:.14em;color:#b2c6bb;margin:0 0 8px}
 .secret-return{z-index:4;flex:none;margin-top:12px}
@@ -191,20 +209,10 @@
   .secret-screen{padding:18px 22px 16px}
   .secret-camera-window,.secret-plate{width:min(76%,300px,39dvh)}
   .secret-revelation{min-height:94px}
-  .secret-title{font-size:58px}
+  .secret-title{font-size:49px}
   .secret-return{min-height:48px}
 }
 @media(prefers-reduced-motion:reduce){
-  .secret-ghost,.secret-lens,.secret-empty,.secret-revelation{transition:none!important}
+  .secret-ghost,.secret-evidence,.secret-paper-last,.secret-paper-operator,
+  .secret-empty,.secret-revelation{transition:none!important}
 }
-
-/* The subject moves in the lens after the operator has been identified. */
-.secret-operator{transition:transform .9s ease-in}
-.secret-screen[data-beat="5"] .secret-operator{transform:scale(1.35) translateY(5%)}
-@media(prefers-reduced-motion:reduce){.secret-operator{transition:none!important}}
-
-/* The final negative is no longer just a print: the camera comes toward us. */
-.secret-camera-window{transition:transform .85s cubic-bezier(.2,.75,.2,1)}
-.secret-screen[data-beat="5"] .secret-camera-window{transform:scale(1.025) translateY(3%)}
-.secret-screen[data-beat="5"] .secret-lens{transform:translate(-50%,-50%) scale(1.16)}
-@media(prefers-reduced-motion:reduce){.secret-camera-window{transition:none!important}}

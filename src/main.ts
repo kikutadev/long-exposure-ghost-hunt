@@ -118,6 +118,7 @@ function startSecret() {
   secretElapsed = 0;
   secretBeat = 0;
   secretPanel.dataset.beat = '0';
+  $('#secret-format').textContent = 'NEGATIVE';
   $('#secret-index').textContent = '001';
   $('#secret-signal').textContent = 'RECOVERED';
   $('#secret-return').classList.add('hidden');
@@ -383,12 +384,16 @@ function frame(tMs: number) {
     if (beat !== secretBeat) {
       secretBeat = beat;
       secretPanel.dataset.beat = String(beat);
-      $('#secret-index').textContent = ['001', '002', '003', '004', '005', '005'][beat];
+      $('#secret-format').textContent = beat < 4 ? 'NEGATIVE' : 'CASE FILE';
+      $('#secret-index').textContent = ['001', '002', '003', '004', '1987', '1987'][beat];
       $('#secret-signal').textContent = beat < 3 ? 'RECOVERED'
-        : beat === 3 ? 'UNASSIGNED' : 'RECORDING';
+        : beat === 3 ? 'UNASSIGNED' : beat === 4 ? 'ARCHIVE LOG' : 'LAST ENTRY';
       if (beat <= 2) sound.cue();
-      if (beat === 4) { sound.close(); sound.tone(61, .85, .10, 'triangle', 31); }
-      if (beat === 5) $('#secret-return').classList.remove('hidden');
+      if (beat === 4) sound.paperFlip();
+      if (beat === 5) {
+        sound.close();
+        $('#secret-return').classList.remove('hidden');
+      }
     }
     return;
   }
