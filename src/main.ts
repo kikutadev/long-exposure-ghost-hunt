@@ -301,7 +301,7 @@ function frame(tMs: number) {
   }
   if (phase === 'look' || exposing) world.tick(dt, worldTime, exposing, exposureSeconds);
   const fastCue = Math.floor((worldTime + .15) / 2.6);
-  if (phase === 'look' && act === 1 && fastCue !== lastFastCue) {
+  if ((phase === 'look' || exposing) && act === 1 && fastCue !== lastFastCue) {
     lastFastCue = fastCue;
     sound.disturbance(act);
   }

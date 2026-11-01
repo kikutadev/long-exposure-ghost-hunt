@@ -35,6 +35,7 @@ export class GhostWorld {
   private nearGhost = new RiveGhost();
   private nearGhostEnabled = false;
   private nearPoseSprites: THREE.Sprite[] = [];
+  private fastPoseTextures: THREE.Texture[] = [];
   private recognizedAt: number | null = null;
   private flicker: THREE.PointLight;
   private frontFluorescent!: THREE.MeshStandardMaterial;
@@ -77,11 +78,14 @@ export class GhostWorld {
 
   async load() {
     const loader = new THREE.TextureLoader();
-    const names = ['ghost-base.png', 'ghost-fast.png', 'ghost-near.png'];
+    const names = ['ghost-base.png', 'ghost-fast-launch.webp', 'ghost-near.png'];
     this.textures = await Promise.all(names.map(n => loader.loadAsync(`${import.meta.env.BASE_URL}assets/${n}`)));
     const poseTextures = await Promise.all(['recognition', 'attack'].map(
       pose => loader.loadAsync(`${import.meta.env.BASE_URL}assets/ghost-near-${pose}.webp`)
     ));
+    this.fastPoseTextures = [this.textures[1],
+      await loader.loadAsync(`${import.meta.env.BASE_URL}assets/ghost-fast-stride.webp`)];
+    this.fastPoseTextures.forEach(texture => { texture.colorSpace = THREE.SRGBColorSpace; });
     try {
       await this.nearGhost.load(import.meta.env.BASE_URL + 'assets/ghost-near.riv');
       this.nearGhostEnabled = true;
@@ -147,6 +151,14 @@ export class GhostWorld {
     });
     this.nearGhost.reset();
     this.updateViewport();
+  }
+
+  /** The figure's feet change position in source art, so every accumulated
+   * exposure sample must use its own pose rather than one live global frame. */
+  private fastPoseAt(time: number): THREE.Texture {
+    const phase = ((time + .15) % 2.6 + 2.6) % 2.6;
+    const u = fixed((phase - .30) / .87, 0, 1);
+    return this.fastPoseTextures[(Math.floor(u * 3.7) % 2)];
   }
 
   private makeGhostSprite(texture: THREE.Texture): THREE.Sprite {
@@ -311,8 +323,10 @@ export class GhostWorld {
     const view = new THREE.Vector3(sample.x, sample.y, sample.z).applyMatrix4(this.camera.matrixWorldInverse);
     const ndc = new THREE.Vector3(sample.x, sample.y, sample.z).project(this.camera);
     // The PNG's translucent margins occupy about 20% on each side.
-    const height = 2.86 * sample.size * .8 / Math.max(.1, -view.z) / Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
-    const width = height * (1.90 / 2.86) * .75 / this.camera.aspect;
+    const spriteW = this.act === 1 ? 3.0 : 1.90;
+    const spriteH = this.act === 1 ? 2.80 : 2.86;
+    const height = spriteH * sample.size * .8 / Math.max(.1, -view.z) / Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
+    const width = height * (spriteW / spriteH) * .75 / this.camera.aspect;
     const overlapX = Math.max(0, Math.min(1, ndc.x + width / 2) - Math.max(-1, ndc.x - width / 2));
     const overlapY = Math.max(0, Math.min(1, ndc.y + height / 2) - Math.max(-1, ndc.y - height / 2));
     const coverage = overlapX * overlapY / (width * height);
@@ -389,7 +403,8 @@ export class GhostWorld {
     const film = formExposure(samples, this.act, exposureSeconds, s => this.project(s));
     // Act 3's danger is distance, not film bleaching. Keep the face and
     // reaching hand legible even when the accumulated density is high.
-    this.filmBleach.value = this.act === 2 ? Math.min(.19, film.bleach * .18) : film.bleach;
+    this.filmBleach.value = this.act === 2 ? Math.min(.19, film.bleach * .18)
+      : this.act === 1 ? Math.min(.43, film.bleach * .43) : film.bleach;
     const total = film.weights.reduce((sum, weight) => sum + weight, 0);
     if (!total) return;
     // One readable human figure, with a few faint positional echoes.
@@ -429,11 +444,13 @@ export class GhostWorld {
     }
     const main = this.sprites[this.act * 6];
     main.position.set(primary.x, primary.y, primary.z);
-    main.scale.set(1.90 * primary.size, 2.86 * primary.size, 1);
+    main.scale.set((this.act === 1 ? 3.0 : 1.90) * primary.size,
+      (this.act === 1 ? 2.80 : 2.86) * primary.size, 1);
+    if (this.act === 1) (main.material as THREE.SpriteMaterial).map = this.fastPoseAt(primary.t);
     // Once the presence notices the lens it becomes less spectral and more
     // physically threatening. The safe ~0.7s exposure is unaffected.
     const imminent = this.act === 2 ? Math.pow(fixed((exposureSeconds - 1.08) / .5, 0, 1), 1.5) : 0;
-    const opacity = Math.min(.98, strength * .9 + imminent * .36);
+    const opacity = Math.min(.98, strength * (this.act === 1 ? 1.16 : .9) + imminent * .36);
     if (this.act === 2 && this.recognizedAt !== null) {
       // Distinct camera-facing poses are essential: geometry-free Rive warping
       // cannot invent a new face angle or realistic foreshortened fingers.
@@ -470,7 +487,9 @@ export class GhostWorld {
       const sprite = this.sprites[this.act * 6 + j + 1];
       if (!projection.inView || Math.abs(index - mid) < 2) continue;
       sprite.position.set(sample.x, sample.y, sample.z);
-      sprite.scale.set(1.90 * sample.size, 2.86 * sample.size, 1);
+      sprite.scale.set((this.act === 1 ? 3.0 : 1.90) * sample.size,
+        (this.act === 1 ? 2.80 : 2.86) * sample.size, 1);
+      if (this.act === 1) (sprite.material as THREE.SpriteMaterial).map = this.fastPoseAt(sample.t);
       (sprite.material as THREE.SpriteMaterial).opacity = trailStrength * (film.weights[index] > 0 ? 1 : 0);
       sprite.visible = film.weights[index] > 0;
     }
