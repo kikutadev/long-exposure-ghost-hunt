@@ -1,6 +1,8 @@
 export class Sound {
   private ctx: AudioContext | null = null;
   private hasAmbience = false;
+  private ambientMix: GainNode | null = null;
+  private ambienceDucked = false;
   private enabled = true;
   private lastFilmTick = -1;
   private nextApproachStep = 0;
@@ -17,6 +19,7 @@ export class Sound {
       if (!this.hasAmbience) {
         this.hasAmbience = true;
         const mix = this.ctx.createGain(); mix.gain.value = .012; mix.connect(this.ctx.destination);
+        this.ambientMix = mix;
         for (const [freq, volume] of [[54,.62],[107,.19],[32,.26]]) {
           const osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
           osc.type = freq === 32 ? 'triangle' : 'sine';
@@ -27,6 +30,11 @@ export class Sound {
     } catch { this.ctx = null; }
   }
   pause() { if (this.ctx) void this.ctx.suspend(); }
+  private holdBreath(silent: boolean) {
+    if (silent === this.ambienceDucked || !this.ctx || !this.ambientMix) return;
+    this.ambienceDucked = silent;
+    this.ambientMix.gain.setTargetAtTime(silent ? .0003 : .012, this.ctx.currentTime, silent ? .018 : .11);
+  }
   disturbance(act: number) {
     if (act === 0) { this.noise(.19,.008); this.tone(132,.18,.008,'triangle',107); }
     else if (act === 1) { this.fastPass(); }
@@ -40,6 +48,27 @@ export class Sound {
   chairScrape() {
     this.noise(.23, .021, 270);
     this.tone(94, .16, .02, 'triangle', 56);
+  }
+  private fastWhip() {
+    if (!this.enabled || !this.ctx) return;
+    const ctx = this.ctx, start = ctx.currentTime, duration = .19;
+    const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * duration), ctx.sampleRate);
+    const out = buffer.getChannelData(0);
+    for (let i = 0; i < out.length; i++) {
+      const t = i / out.length;
+      out[i] = (Math.random() * 2 - 1) * Math.sin(t * Math.PI);
+    }
+    const src = ctx.createBufferSource(); src.buffer = buffer;
+    const filter = ctx.createBiquadFilter(); filter.type = 'bandpass'; filter.frequency.value = 620;
+    const pan = ctx.createStereoPanner();
+    pan.pan.setValueAtTime(.85, start);
+    pan.pan.linearRampToValueAtTime(-.85, start + duration);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(.0001, start);
+    gain.gain.linearRampToValueAtTime(.048, start + .045);
+    gain.gain.exponentialRampToValueAtTime(.0001, start + duration);
+    src.connect(filter); filter.connect(pan); pan.connect(gain); gain.connect(ctx.destination);
+    src.start(start); src.stop(start + duration);
   }
   private fastPass() {
     if (!this.enabled || !this.ctx) return;
@@ -96,6 +125,9 @@ export class Sound {
     src.start();
   }
   expose(seconds: number, act: number, presence?: { visible: boolean; x: number }, heldBreath = false) {
+    // At the exact instant the presence notices the operator, even the room
+    // tone drops. The silence is tied to the actual apparition animation.
+    this.holdBreath(heldBreath || (act === 0 && seconds >= .63 && seconds < .93));
     const presenceVisible = presence?.visible ?? true;
     if (act === 0 && seconds >= .62 && !this.firstJerkPlayed) {
       this.firstJerkPlayed = true;
@@ -108,6 +140,7 @@ export class Sound {
       else if (!this.fastCrossed && Math.abs(presence?.x ?? 2) < .47) {
         this.fastCrossed = true;
         // The passing figure crosses the photographer's axis now.
+        this.fastWhip();
         this.noise(.10, .043, 370);
         this.tone(136, .075, .024, 'triangle', 64);
       }
@@ -138,6 +171,7 @@ export class Sound {
     }
   }
   open() {
+    this.holdBreath(false);
     this.lastFilmTick = -1;
     this.nextApproachStep = 0;
     this.previousPresenceVisible = true;
@@ -146,7 +180,7 @@ export class Sound {
     this.tone(245, .11, .025, 'sawtooth', 410);
     this.noise(.08, .026);
   }
-  close() { this.noise(.065, .11); this.tone(190, .08, .13, 'triangle', 47); this.tone(1320, .035, .065, 'square', 520); }
+  close() { this.holdBreath(false); this.noise(.065, .11); this.tone(190, .08, .13, 'triangle', 47); this.tone(1320, .035, .065, 'square', 520); }
   recognized() {
     // A short stop in the film transport, then a single dry click.
     this.noise(.035, .032, 620);
@@ -155,6 +189,7 @@ export class Sound {
   detected() { this.tone(430, .24, .036, 'sine', 650); this.tone(880, .24, .024, 'sine', 1000); }
   miss() { this.tone(162, .24, .035, 'triangle', 94); }
   death() {
+    this.holdBreath(false);
     this.noise(.68, .18);
     this.tone(70, .83, .15, 'sawtooth', 24);
     this.tone(830, .14, .055, 'square', 75);

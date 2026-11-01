@@ -382,7 +382,7 @@ function frame(tMs: number) {
       if (phase === 'closing') { showResult(); iris.draw(1); irisOpen = 1; }
     }
   }
-  if (phase === 'develop' && t - phaseStarted > .62) finishDevelop();
+  if (phase === 'develop' && t - phaseStarted > .38) finishDevelop();
   if (phase === 'end' && !endingClick && t - phaseStarted > 1.5) {
     endingClick = true; sound.close();
     endPanel.classList.add('last-click');

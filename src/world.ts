@@ -278,6 +278,10 @@ export class GhostWorld {
   setAct(act: number) {
     this.resetFatal();
     this.act = act;
+    // The opening photograph is composed on the notebook, not across an
+    // empty classroom. Later stages retain their broad view for tracking.
+    this.camera.fov = act === 0 ? 48 : 62;
+    this.camera.updateProjectionMatrix();
     this.recognizedAt = null;
     this.nearGhost.reset();
     this.yaw = act === 1 ? -.13 : act === 2 ? 0 : -.07;
@@ -358,7 +362,9 @@ export class GhostWorld {
     // Local time is stable across replays and is coupled to the ghost's crossing.
     const pageCycle = ((time - .55) % 4.1 + 4.1) % 4.1;
     if (this.pageMixer) {
-      this.pageMixer.setTime(this.act === 0 ? Math.min(exposing ? exposureAge : pageCycle, this.pageClipDuration) : 0);
+      // Freeze the sheet in the air just after the apparition looks up.
+      // The physical impossibility is the reveal, rather than a screen flash.
+      this.pageMixer.setTime(this.act === 0 ? Math.min(exposing ? Math.min(exposureAge, .75) : pageCycle, this.pageClipDuration) : 0);
     } else {
       // Fallback if the glTF clip is absent: keep the experience playable.
       this.book.rotation.z = this.act === 0 ? Math.sin((exposing ? exposureAge : time) * 2.3) * .04 : 0;
