@@ -1,3 +1,5 @@
+import type { DeathCause } from './shot';
+
 export class Sound {
   private ctx: AudioContext | null = null;
   private hasAmbience = false;
@@ -9,6 +11,7 @@ export class Sound {
   private previousPresenceVisible = true;
   private firstJerkPlayed = false;
   private fastCrossed = false;
+  private runnerReturned = false;
   get isEnabled() { return this.enabled; }
   toggle() { this.enabled = !this.enabled; if (this.enabled) this.start(); else this.pause(); }
   start() {
@@ -137,6 +140,12 @@ export class Sound {
       this.tone(112, .12, .025, 'triangle', 62);
     }
     if (act === 1) {
+      if (seconds >= 1.62 && !this.runnerReturned) {
+        this.runnerReturned = true;
+        // It found an impossible route from the closed door to the lens.
+        this.noise(.12, .055, 210);
+        this.tone(92, .30, .045, 'triangle', 45);
+      }
       if (!presenceVisible) this.fastCrossed = false;
       else if (!this.fastCrossed && Math.abs(presence?.x ?? 2) < .47) {
         this.fastCrossed = true;
@@ -183,6 +192,7 @@ export class Sound {
     this.previousPresenceVisible = true;
     this.firstJerkPlayed = false;
     this.fastCrossed = false;
+    this.runnerReturned = false;
     this.tone(245, .11, .025, 'sawtooth', 410);
     this.noise(.08, .026);
   }
@@ -194,8 +204,13 @@ export class Sound {
   }
   detected() { this.tone(430, .24, .036, 'sine', 650); this.tone(880, .24, .024, 'sine', 1000); }
   miss() { this.tone(162, .24, .035, 'triangle', 94); }
-  death() {
+  death(cause: DeathCause) {
     this.holdBreath(false);
+    if (cause === 'RUN_THROUGH') {
+      // Body and camera collide: a short wooden crack, not a film alarm.
+      this.noise(.23, .20, 165);
+      this.tone(58, .25, .14, 'triangle', 26);
+    }
     this.noise(.68, .18);
     this.tone(70, .83, .15, 'sawtooth', 24);
     this.tone(830, .14, .055, 'square', 75);

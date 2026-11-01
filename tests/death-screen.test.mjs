@@ -6,7 +6,7 @@ test('distinct death causes retain their own readable explanation', () => {
   assert.match(deathDescription('OVEREXPOSED'), /SHUTTER OPEN/);
   assert.match(deathDescription('TOO CLOSE'), /TOO CLOSE/);
   assert.notEqual(deathDescription('OVEREXPOSED'), deathDescription('TOO CLOSE'));
-  assert.match(deathDescription('OVEREXPOSED', 1), /FILM BURNED/);
+  assert.match(deathDescription('RUN_THROUGH', 1), /IN ITS PATH/);
 });
 
 
@@ -33,8 +33,8 @@ test('death screen show/reset preserves the right ghost and restart visibility',
   view.show('OVEREXPOSED', 0);
   assert.equal(ghost.src, '/long-exposure/assets/ghost-base.png');
   assert.match(reason.textContent, /SHUTTER OPEN/);
-  view.show('OVEREXPOSED', 1);
+  view.show('RUN_THROUGH', 1);
   assert.equal(ghost.src, '/long-exposure/assets/ghost-fast.png');
-  assert.match(reason.textContent, /FILM BURNED/);
-  assert.equal(heading.textContent, 'EXPOSURE\nLOST.');
+  assert.match(reason.textContent, /IN ITS PATH/);
+  assert.equal(heading.textContent, 'IT RAN\nTHROUGH.');
 });

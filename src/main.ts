@@ -164,7 +164,7 @@ function die(cause: DeathCause) {
   game.classList.remove('fatal-warning');
   world.showExposure(capture.samples, exposureSeconds);
   world.beginFatal(cause);
-  sound.death();
+  sound.death(cause);
   $('#hud').classList.remove('ready');
   resultPanel.classList.add('hidden');
   albumPanel.classList.add('hidden');
@@ -181,7 +181,7 @@ function endExposure(forced = false) {
   exposureSeconds = capture.elapsed(t, exposureLimit(act));
   const danger = fatalState();
   if (danger.cause || forced) {
-    die(danger.cause ?? 'OVEREXPOSED');
+    die(danger.cause ?? (act === 1 ? 'RUN_THROUGH' : 'OVEREXPOSED'));
     return;
   }
   currentResult = shotState();

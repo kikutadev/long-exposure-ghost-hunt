@@ -36,6 +36,7 @@ export class GhostWorld {
   private nearGhostEnabled = false;
   private nearPoseSprites: THREE.Sprite[] = [];
   private fastPoseTextures: THREE.Texture[] = [];
+  private fastHeadOnTexture!: THREE.Texture;
   private baseNoticedSprite: THREE.Sprite | null = null;
   private recognizedAt: number | null = null;
   private flicker: THREE.PointLight;
@@ -87,6 +88,8 @@ export class GhostWorld {
     this.fastPoseTextures = [this.textures[1],
       await loader.loadAsync(`${import.meta.env.BASE_URL}assets/ghost-fast-stride.webp`)];
     this.fastPoseTextures.forEach(texture => { texture.colorSpace = THREE.SRGBColorSpace; });
+    this.fastHeadOnTexture = await loader.loadAsync(`${import.meta.env.BASE_URL}assets/ghost-fast.png`);
+    this.fastHeadOnTexture.colorSpace = THREE.SRGBColorSpace;
     const noticedTexture = await loader.loadAsync(`${import.meta.env.BASE_URL}assets/ghost-base-noticed.webp`);
     noticedTexture.colorSpace = THREE.SRGBColorSpace;
     try {
@@ -160,7 +163,11 @@ export class GhostWorld {
 
   /** The figure's feet change position in source art, so every accumulated
    * exposure sample must use its own pose rather than one live global frame. */
-  private fastPoseAt(time: number): THREE.Texture {
+  private fastPoseAt(time: number, sample: GhostSample): THREE.Texture {
+    // When the shutter is left open, the fleeing figure's return route
+    // bends through the camera. The existing frontal running keyframe makes
+    // that change of trajectory visible without pretending it looks back.
+    if (sample.z > -4.4) return this.fastHeadOnTexture;
     const phase = ((time + .15) % 2.6 + 2.6) % 2.6;
     const u = fixed((phase - .30) / .87, 0, 1);
     return this.fastPoseTextures[(Math.floor(u * 3.7) % 2)];
@@ -322,6 +329,14 @@ export class GhostWorld {
       const pos = u < .19 ? u / .19 * .10
         : u < .78 ? .10 + (u - .19) / .59 * .82
         : .92 + (u - .78) / .22 * .08;
+      if (exposureAge >= 1.62) {
+        const turn = fixed((exposureAge - 1.62) / .78, 0, 1);
+        const dash = Math.pow(turn, 1.45);
+        // It was trying to reach the door, not the photographer. The open
+        // shutter changes its route; the collision, not film damage, is fatal.
+        return { t, x: -1.75 * (1 - dash), y: 1.50, z: -4.45 + 9.25 * dash,
+          visible: true, size: 1.07 };
+      }
       return { t, x: 1.75 - pos * 3.50, y: 1.50 + .025 * Math.sin(t * 18), z: -4.45, visible: active, size: 1.07 };
     }
     return nearGhostSample(t, exposureAge, this.recognizedAt);
@@ -332,8 +347,9 @@ export class GhostWorld {
     const view = new THREE.Vector3(sample.x, sample.y, sample.z).applyMatrix4(this.camera.matrixWorldInverse);
     const ndc = new THREE.Vector3(sample.x, sample.y, sample.z).project(this.camera);
     // The PNG's translucent margins occupy about 20% on each side.
-    const spriteW = this.act === 1 ? 3.0 : 1.90;
-    const spriteH = this.act === 1 ? 2.80 : 2.86;
+    const crossingSideways = this.act === 1 && sample.z <= -4.4;
+    const spriteW = crossingSideways ? 3.0 : 1.90;
+    const spriteH = crossingSideways ? 2.80 : 2.86;
     const height = spriteH * sample.size * .8 / Math.max(.1, -view.z) / Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
     const width = height * (spriteW / spriteH) * .75 / this.camera.aspect;
     const overlapX = Math.max(0, Math.min(1, ndc.x + width / 2) - Math.max(-1, ndc.x - width / 2));
@@ -419,7 +435,7 @@ export class GhostWorld {
     // Act 3's danger is distance, not film bleaching. Keep the face and
     // reaching hand legible even when the accumulated density is high.
     this.filmBleach.value = this.act === 2 ? Math.min(.19, film.bleach * .18)
-      : this.act === 1 ? Math.min(.43, film.bleach * .43)
+      : this.act === 1 ? (exposureSeconds >= 1.62 ? Math.min(.14, film.bleach * .16) : Math.min(.43, film.bleach * .43))
       : Math.min(.34, film.bleach * .36);
     const total = film.weights.reduce((sum, weight) => sum + weight, 0);
     if (!total) return;
@@ -434,7 +450,11 @@ export class GhostWorld {
     // Act 2 is a brief crossing. Pick the best *actually exposed* frame for
     // the primary silhouette, rather than a half-clipped weighted midpoint.
     // The old samples still form the blur/afterimage and quality calculation.
-    if (this.act === 1) {
+    if (this.act === 1 && exposureSeconds >= 1.62) {
+      // Preserve the last visible frame of the oncoming figure: the danger
+      // must be visible before collision, not buried behind an earlier pass.
+      mid = samples.length - 1;
+    } else if (this.act === 1) {
       let bestScore = -1;
       for (let i = 0; i < samples.length; i++) {
         const sample = samples[i];
@@ -460,9 +480,10 @@ export class GhostWorld {
     }
     const main = this.sprites[this.act * 6];
     main.position.set(primary.x, primary.y, primary.z);
-    main.scale.set((this.act === 1 ? 3.0 : 1.90) * primary.size,
-      (this.act === 1 ? 2.80 : 2.86) * primary.size, 1);
-    if (this.act === 1) (main.material as THREE.SpriteMaterial).map = this.fastPoseAt(primary.t);
+    const runningAtLens = this.act === 1 && primary.z > -4.4;
+    main.scale.set((runningAtLens ? 1.90 : this.act === 1 ? 3.0 : 1.90) * primary.size,
+      (runningAtLens ? 2.86 : this.act === 1 ? 2.80 : 2.86) * primary.size, 1);
+    if (this.act === 1) (main.material as THREE.SpriteMaterial).map = this.fastPoseAt(primary.t, primary);
     // Once the presence notices the lens it becomes less spectral and more
     // physically threatening. The safe ~0.7s exposure is unaffected.
     const imminent = this.act === 2 ? Math.pow(fixed((exposureSeconds - 1.08) / .5, 0, 1), 1.5) : 0;
@@ -513,9 +534,10 @@ export class GhostWorld {
       const sprite = this.sprites[this.act * 6 + j + 1];
       if (!projection.inView || Math.abs(index - mid) < 2) continue;
       sprite.position.set(sample.x, sample.y, sample.z);
-      sprite.scale.set((this.act === 1 ? 3.0 : 1.90) * sample.size,
-        (this.act === 1 ? 2.80 : 2.86) * sample.size, 1);
-      if (this.act === 1) (sprite.material as THREE.SpriteMaterial).map = this.fastPoseAt(sample.t);
+      const closePass = this.act === 1 && sample.z > -4.4;
+      sprite.scale.set((closePass ? 1.90 : this.act === 1 ? 3.0 : 1.90) * sample.size,
+        (closePass ? 2.86 : this.act === 1 ? 2.80 : 2.86) * sample.size, 1);
+      if (this.act === 1) (sprite.material as THREE.SpriteMaterial).map = this.fastPoseAt(sample.t, sample);
       (sprite.material as THREE.SpriteMaterial).opacity = trailStrength * (film.weights[index] > 0 ? 1 : 0);
       sprite.visible = film.weights[index] > 0;
     }
@@ -542,7 +564,28 @@ export class GhostWorld {
     const rush = 1 - Math.pow(1 - progress, 3);
     this.camera.position.copy(this.fatal.origin);
     this.camera.quaternion.copy(this.fatal.quaternion);
-    if (this.fatal.cause === 'TOO CLOSE') {
+    if (this.fatal.cause === 'RUN_THROUGH') {
+      // The runner is not attacking. The open shutter has bent its escape
+      // route directly through the operator. First show the imminent body,
+      // then let the impact actually knock the camera toward the floor.
+      const runner = this.sprites[6];
+      const impact = fixed(elapsed / .18, 0, 1);
+      const fall = fixed((elapsed - .20) / .52, 0, 1);
+      const fallEase = fall * fall * (3 - 2 * fall);
+      (runner.material as THREE.SpriteMaterial).map = this.fastHeadOnTexture;
+      (runner.material as THREE.SpriteMaterial).opacity = .98 * (1 - fixed((elapsed - .23) / .22, 0, 1));
+      runner.visible = elapsed < .45;
+      runner.position.set(0, 1.15 - .18 * impact, this.fatal.ghostZ + .30 * impact);
+      runner.scale.set(1.9, 2.86, 1);
+      this.filmBleach.value = .12 + impact * .08;
+      if (!reducedMotion) {
+        this.camera.position.y -= .95 * fallEase;
+        this.camera.position.x -= .32 * fallEase;
+        this.camera.position.z -= .18 * fallEase;
+        this.camera.rotateZ(.43 * fallEase);
+        this.camera.rotateX(-.20 * fallEase);
+      }
+    } else if (this.fatal.cause === 'TOO CLOSE') {
       // The physical attack frame persists during impact. Its foreshortened
       // fingers, rather than a scaled idle sprite, rush into the lens.
       const idle = this.sprites[2 * 6];

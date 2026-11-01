@@ -11,6 +11,7 @@ export type ShotResult = { quality: number; success: boolean; label: string; des
 export function formExposure(samples: readonly GhostSample[], act: number, seconds: number, project: (s: GhostSample) => Projection) {
   let energy = 0, motion = 0, framing = 0, visibleTime = 0;
   let prior: Projection | null = null;
+  let priorDepth: number | null = null;
   const start = samples.length ? samples[samples.length - 1].t - seconds : 0;
   let previousTime = start;
   const weights: number[] = [];
@@ -24,7 +25,7 @@ export function formExposure(samples: readonly GhostSample[], act: number, secon
     const weight = dt * coverage * area;
     weights.push(weight);
     energy += weight * [1, 2.65, 1.65][act];
-    if (!coverage) { prior = null; continue; }
+    if (!coverage) { prior = null; priorDepth = null; continue; }
     visibleTime += dt;
     framing += dt * coverage;
     if (prior) {
@@ -32,8 +33,12 @@ export function formExposure(samples: readonly GhostSample[], act: number, secon
       motion += Math.hypot(p.x - prior.x, p.y - prior.y) * (act === 1 ? .38 : .5);
       // An approaching face leaves nested silhouettes even without lateral motion.
       motion += Math.abs((p.height ?? 0) - (prior.height ?? 0)) * .6;
+      // A ghost coming straight down the optical axis also smears across
+      // the film even if the centre of its silhouette barely moves.
+      if (act === 1 && priorDepth !== null) motion += Math.abs(s.z - priorDepth) * .42;
     }
     prior = p;
+    priorDepth = s.z;
   }
   const density = Math.pow(clamp(energy / .95), 2.35);
   const sharpness = Math.exp(-Math.pow(motion / .65, 1.2));
@@ -46,13 +51,15 @@ export function formExposure(samples: readonly GhostSample[], act: number, secon
 
 export function evaluateShot(samples: readonly GhostSample[], act: number, exposureSeconds: number, project: (sample: GhostSample) => Projection): ShotResult {
   const film = formExposure(samples, act, exposureSeconds, project);
-  const tooLate = act === 2 && samples.some(hasReachedPhotographer);
+  const tooLate = (act === 2 || act === 1) && samples.some(hasReachedPhotographer);
   const quality = tooLate ? 0 : film.quality;
   const success = quality >= 45 && film.visibleTime >= .10;
   let label = success ? (quality >= 75 ? 'CAPTURED' : 'RECORDED') : 'TOO DARK';
   let description = success ? 'The presence is recorded.' : 'Not enough light. Hold the shutter longer.';
   if (!success) {
-    if (tooLate) { label = 'TOO LATE'; description = 'It reached the lens before you let go.'; }
+    if (tooLate) { label = 'TOO LATE'; description = act === 1
+      ? 'The runner crossed the lens before you let go.'
+      : 'It reached the lens before you let go.'; }
     else if (!film.visibleTime) { label = 'EMPTY FRAME'; description = 'Watch for movement before exposing.'; }
     else if (film.composition < .65) { label = 'OUT OF FRAME'; description = 'Keep the whole presence inside the viewfinder.'; }
     else if (film.sharpness < .55) { label = 'TOO BLURRY'; description = 'A shorter exposure will freeze its motion.'; }
@@ -61,7 +68,7 @@ export function evaluateShot(samples: readonly GhostSample[], act: number, expos
   return { quality, success, label, description };
 }
 
-export type DeathCause = 'OVEREXPOSED' | 'TOO CLOSE';
+export type DeathCause = 'OVEREXPOSED' | 'TOO CLOSE' | 'RUN_THROUGH';
 
 /** Upper bound on film sampling; stage-three attacks are decided by distance, not this cap. */
 export const exposureLimit = (_act: number) => 2.4;
@@ -74,12 +81,14 @@ export function assessFatalExposure(
   project: (sample: GhostSample) => Projection
 ): { cause: DeathCause | null; warning: boolean } {
   const film = formExposure(samples, act, seconds, project);
-  const tooClose = act === 2 && samples.some(hasReachedPhotographer);
-  const openTooLong = act !== 2 && seconds >= exposureLimit(act);
-  const fatalLight = act !== 2 && film.visibleTime >= .1 && film.bleach >= .75;
+  const hitsPhotographer = samples.some(hasReachedPhotographer);
+  const openTooLong = seconds >= exposureLimit(act);
+  const fatalLight = act === 0 && film.visibleTime >= .1 && film.bleach >= .75;
   return {
-    cause: tooClose ? 'TOO CLOSE' : (openTooLong || fatalLight) ? 'OVEREXPOSED' : null,
-    warning: (act === 2 && samples.some(s => s.visible && distanceToPhotographer(s) <= APPROACH_WARNING_DISTANCE))
-      || (act !== 2 && seconds >= 1.75) || film.bleach >= .35,
+    cause: act === 2 && hitsPhotographer ? 'TOO CLOSE'
+      : act === 1 && (hitsPhotographer || openTooLong) ? 'RUN_THROUGH'
+      : act === 0 && (openTooLong || fatalLight) ? 'OVEREXPOSED' : null,
+    warning: ((act === 1 || act === 2) && samples.some(s => s.visible && distanceToPhotographer(s) <= APPROACH_WARNING_DISTANCE))
+      || (act === 0 && seconds >= 1.75) || film.bleach >= .35,
   };
 }

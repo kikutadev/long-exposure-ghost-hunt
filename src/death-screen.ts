@@ -4,7 +4,7 @@ const GHOST_IMAGES = ['ghost-base.png', 'ghost-fast.png', 'ghost-near.png'];
 
 export function deathDescription(cause: DeathCause, act = 0) {
   if (cause === 'TOO CLOSE') return 'IT CAME TOO CLOSE. YOUR CAMERA COULD NOT SAVE YOU.';
-  if (act === 1) return 'YOU HELD THE SHUTTER OPEN. THE FILM BURNED AWAY.';
+  if (cause === 'RUN_THROUGH') return 'THE OPEN SHUTTER PUT YOU IN ITS PATH.';
   return 'YOU HELD THE SHUTTER OPEN. IT FOUND ITS WAY THROUGH.';
 }
 
@@ -36,7 +36,7 @@ export class DeathScreen {
     this.ghost.src = finalFrame ?? `${this.assetsBaseUrl}assets/${GHOST_IMAGES[act]}`;
     this.ghost.alt = finalFrame ? 'The camera’s final view of the classroom' : 'A presence by the camera';
     if (this.heading) this.heading.textContent = cause === 'TOO CLOSE' ? 'IT REACHED\nYOU.'
-      : act === 1 ? 'EXPOSURE\nLOST.' : 'YOU WERE\nSEEN.';
+      : cause === 'RUN_THROUGH' ? 'IT RAN\nTHROUGH.' : 'YOU WERE\nSEEN.';
     this.reason.textContent = deathDescription(cause, act);
     this.panel.classList.remove('hidden', 'death-arrive');
     // Restart CSS animation on a subsequent death, even after RESTART.

@@ -123,6 +123,28 @@ test('prolonged shutter hold always kills even outside the frame', async () => {
   assert.equal(assessFatalExposure(timed(2.40), 0, 2.40, empty).cause, 'OVEREXPOSED');
 });
 
+test('the second apparition rushing down the lens axis destroys sharpness', async () => {
+  const {formExposure} = await import('../src/shot.ts');
+  const still = timed(.5).map(s => ({...s, z: -4.45}));
+  const charging = still.map(s => ({...s, z: -4.45 + s.t * 15}));
+  assert.ok(formExposure(still, 1, .5, center).sharpness > .95);
+  assert.ok(formExposure(charging, 1, .5, center).sharpness < .4);
+});
+
+test('act two: ruined film fails a photo, but only the fleeing ghost colliding kills', async () => {
+  const {assessFatalExposure} = await import('../src/shot.ts');
+  const far = timed(2.15);
+  const empty = () => ({x: 3, y: 0, inView: false});
+  assert.equal(assessFatalExposure(far, 1, 2.15, center).cause, null,
+    'too much film exposure alone must not be fatal in the running act');
+  assert.equal(evaluateShot(far, 1, 2.15, center).success, false,
+    'the same exposure can still ruin the photograph');
+  const hit = {...far.at(-1), t: 2.16, x: 0, y: 1.65, z: PHOTOGRAPHER_POSITION.z - 1.2};
+  assert.equal(assessFatalExposure([...far,hit], 1, 2.16, empty).cause, 'RUN_THROUGH');
+  assert.equal(assessFatalExposure(far, 1, 2.40, empty).cause, 'RUN_THROUGH',
+    'holding the shutter indefinitely cannot evade the runner');
+});
+
 test('second teleport immediately materializes inside the kill radius', async () => {
   const {assessFatalExposure} = await import('../src/shot.ts');
   const recognizedAt = .65;
