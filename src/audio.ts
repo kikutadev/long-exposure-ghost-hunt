@@ -202,6 +202,10 @@ export class Sound {
     this.noise(.035, .032, 620);
     this.tone(95, .08, .024, 'triangle', 58);
   }
+  warning() {
+    this.tone(280, .14, .035, 'triangle', 95);
+    this.noise(.045, .025, 1200);
+  }
   detected() { this.tone(430, .24, .036, 'sine', 650); this.tone(880, .24, .024, 'sine', 1000); }
   miss() { this.tone(162, .24, .035, 'triangle', 94); }
   death(cause: DeathCause) {

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ENDINGS, EndingArchive} from '../src/endings.ts';
+import {ENDINGS, EndingArchive, completionEnding} from '../src/endings.ts';
 
 const makeStorage = () => {
   const data = new Map();
@@ -10,11 +10,11 @@ const makeStorage = () => {
   };
 };
 
-test('all four existing outcomes are separately collectible and persisted', () => {
+test('existing four discoveries survive the six-outcome expansion', () => {
   const storage = makeStorage();
   const first = new EndingArchive(storage);
   assert.equal(first.count, 0);
-  assert.deepEqual(ENDINGS.map(e => e.id), ['seen', 'run-through', 'reached', 'fourth']);
+  assert.deepEqual(ENDINGS.map(e => e.id), ['seen', 'run-through', 'reached', 'breach', 'fourth', 'pristine']);
   assert.equal(first.unlock('run-through'), true);
   assert.equal(first.unlock('run-through'), false);
   assert.equal(first.unlock('fourth'), true);
@@ -34,4 +34,10 @@ test('invalid or inaccessible local storage does not break collection', () => {
   assert.equal(archive.count, 1);
   const unknown = {getItem: () => '["fourth","fake","fourth"]', setItem: () => {}};
   assert.equal(new EndingArchive(unknown).count, 1);
+});
+
+test('only three consistently excellent photographs yield the rare clear ending', () => {
+  assert.equal(completionEnding([90, 85, 96]), 'pristine');
+  assert.equal(completionEnding([90, 84, 96]), 'fourth');
+  assert.equal(completionEnding([99, 99]), 'fourth');
 });

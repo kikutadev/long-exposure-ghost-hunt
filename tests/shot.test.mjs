@@ -131,12 +131,12 @@ test('the second apparition rushing down the lens axis destroys sharpness', asyn
   assert.ok(formExposure(charging, 1, .5, center).sharpness < .4);
 });
 
-test('act two: ruined film fails a photo, but only the fleeing ghost colliding kills', async () => {
+test('act two: overexposed film now kills before the collision', async () => {
   const {assessFatalExposure} = await import('../src/shot.ts');
   const far = timed(2.15);
   const empty = () => ({x: 3, y: 0, inView: false});
-  assert.equal(assessFatalExposure(far, 1, 2.15, center).cause, null,
-    'too much film exposure alone must not be fatal in the running act');
+  assert.equal(assessFatalExposure(far, 1, 2.15, center).cause, 'EXPOSURE_BREACH',
+    'overexposure is never a free retry');
   assert.equal(evaluateShot(far, 1, 2.15, center).success, false,
     'the same exposure can still ruin the photograph');
   const hit = {...far.at(-1), t: 2.16, x: 0, y: 1.65, z: PHOTOGRAPHER_POSITION.z - 1.2};
@@ -156,6 +156,22 @@ test('second teleport immediately materializes inside the kill radius', async ()
     s.x-PHOTOGRAPHER_POSITION.x,s.y-PHOTOGRAPHER_POSITION.y,s.z-PHOTOGRAPHER_POSITION.z
   ) <= 1.85);
   assert.ok(firstContactIndex > 0);
-  assert.equal(assessFatalExposure(frames.slice(0, firstContactIndex),2,1.65,center).cause,null);
+  assert.equal(assessFatalExposure(frames.slice(0, firstContactIndex),2,1.65,()=>({...center(),inView:false})).cause,null);
   assert.equal(assessFatalExposure(frames.slice(0, firstContactIndex+1),2,.5,center).cause,'TOO CLOSE');
+});
+test('a faint, mostly cropped or smeared ghost is not a successful photo', () => {
+  const values = timed(1.03);
+  assert.equal(evaluateShot(values, 0, 1.03, () => ({...center(), coverage:.65})).success, false);
+  assert.equal(evaluateShot(values, 0, 1.03, () => ({...center(), width:.08, height:.1})).success, false);
+  assert.equal(evaluateShot(timed(.54), 0, .54, center).success, false);
+});
+
+test('a damaging exposure warns before instantly ending the run in every act', async () => {
+  const {assessFatalExposure} = await import('../src/shot.ts');
+  const warn = timed(1.40);
+  const burn = timed(1.60);
+  assert.equal(assessFatalExposure(warn, 0, 1.40, center).warning, true);
+  assert.equal(assessFatalExposure(burn, 0, 1.60, center).cause, 'OVEREXPOSED');
+  assert.equal(assessFatalExposure(burn, 1, 1.60, center).cause, 'EXPOSURE_BREACH');
+  assert.equal(assessFatalExposure(burn, 2, 1.60, center).cause, 'EXPOSURE_BREACH');
 });

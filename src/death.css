@@ -19,9 +19,12 @@
 .death-bottom .death-foot{text-align:center;color:#aa8b8e;font-size:8px;margin:16px 0 0}
 @keyframes death-still{from{opacity:.22;filter:saturate(0) contrast(1.5) brightness(.35)}to{opacity:.8;filter:saturate(.5) contrast(1.2) brightness(.75)}}
 #game[data-phase="dying"] .vignette::after{content:"";position:absolute;inset:0;pointer-events:none;animation:exposure-burn .82s ease-out both;background:radial-gradient(ellipse at 50% 42%,rgba(241,245,229,.72),rgba(183,196,187,.38) 42%,rgba(8,9,10,.95) 95%);mix-blend-mode:screen}
-#game[data-phase="dying"][data-death-cause="TOO CLOSE"] .vignette::after{animation:camera-fall .82s ease-in both;background:linear-gradient(0deg,rgba(4,7,9,.9),transparent 56%)}
+#game[data-phase="dying"][data-death-cause="TOO CLOSE"] .vignette::after,
+#game[data-phase="dying"][data-death-cause="RUN_THROUGH"] .vignette::after{animation:camera-fall .82s ease-in both;background:linear-gradient(0deg,rgba(4,7,9,.9),transparent 56%)}
 @keyframes exposure-burn{0%{opacity:0}28%{opacity:.38}58%{opacity:.85}100%{opacity:1}}
 @keyframes camera-fall{0%{opacity:0}55%{opacity:.15}100%{opacity:1}}
 /* Retain the viewfinder's true aspect, but frame the captured photograph around its subject. */
 .print-photo img{object-fit:cover;object-position:50% 48%}
 @media(prefers-reduced-motion:reduce){.death-arrive .death-vision img,#game[data-phase="dying"] .vignette::after{animation:none!important}}
+#game.fatal-warning #shutter.pressed .shutter-ring{border-color:#eadac0;box-shadow:0 0 0 4px rgba(224,192,137,.4),0 0 0 8px rgba(214,189,150,.38),0 0 24px rgba(232,210,170,.38)}
+#game.fatal-warning #shutter.pressed .shutter-core{background:#ebe0cc}

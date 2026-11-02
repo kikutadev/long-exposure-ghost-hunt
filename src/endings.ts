@@ -3,7 +3,9 @@ export const ENDINGS = [
   { id: 'seen', title: 'YOU WERE SEEN.', note: 'THE ONE WHO WAITS / OVEREXPOSED' },
   { id: 'run-through', title: 'IT RAN THROUGH.', note: 'THE ONE WHO RUNS / COLLISION' },
   { id: 'reached', title: 'IT REACHED YOU.', note: 'THE ONE WHO WATCHES / CONTACT' },
-  { id: 'fourth', title: 'EXPOSURE 004.', note: 'OPERATOR: UNKNOWN' }
+  { id: 'breach', title: 'EXPOSURE BREACH.', note: 'THE FILM TOOK TOO MUCH LIGHT' },
+  { id: 'fourth', title: 'EXPOSURE 004.', note: 'OPERATOR: UNKNOWN' },
+  { id: 'pristine', title: 'UNEXPOSED NEGATIVE.', note: 'THREE PERFECT PRINTS / FRAME 004' }
 ] as const;
 
 export type EndingId = typeof ENDINGS[number]['id'];
@@ -33,6 +35,9 @@ export class EndingArchive {
 
   has(id: EndingId) { return this.discovered.has(id); }
   get count() { return this.discovered.size; }
+  get originalCollectionComplete() {
+    return (['seen','run-through','reached','fourth'] as EndingId[]).every(id => this.has(id));
+  }
 
   unlock(id: EndingId) {
     if (this.discovered.has(id)) return false;
@@ -42,4 +47,11 @@ export class EndingArchive {
     } catch { /* Keep the in-memory discovery if storage is unavailable. */ }
     return true;
   }
+}
+
+
+/** Each surviving run yields one outcome, never a score for retrying repeatedly. */
+export function completionEnding(photoQualities: readonly number[]): 'fourth' | 'pristine' {
+  return photoQualities.length === 3 && photoQualities.every(q => q >= 85)
+    ? 'pristine' : 'fourth';
 }

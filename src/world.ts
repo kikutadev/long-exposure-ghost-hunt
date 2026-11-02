@@ -169,7 +169,7 @@ export class GhostWorld {
     // that change of trajectory visible without pretending it looks back.
     if (sample.z > -4.4) return this.fastHeadOnTexture;
     const phase = ((time + .15) % 2.6 + 2.6) % 2.6;
-    const u = fixed((phase - .30) / .87, 0, 1);
+    const u = fixed((phase - .30) / 1.08, 0, 1);
     return this.fastPoseTextures[(Math.floor(u * 3.7) % 2)];
   }
 
@@ -323,8 +323,8 @@ export class GhostWorld {
     if (a === 1) {
       const phase = ((t + .15) % 2.6 + 2.6) % 2.6;
       // The chairs move first. A short, readable pass follows the physical cue.
-      const active = phase >= .30 && phase < 1.17;
-      const u = fixed((phase - .30) / .87, 0, 1);
+      const active = phase >= .30 && phase < 1.38;
+      const u = fixed((phase - .30) / 1.08, 0, 1);
       // Hesitate at the window, burst across the desks, then disappear by the door.
       const pos = u < .19 ? u / .19 * .10
         : u < .78 ? .10 + (u - .19) / .59 * .82
@@ -337,7 +337,7 @@ export class GhostWorld {
         return { t, x: -1.75 * (1 - dash), y: 1.50, z: -4.45 + 9.25 * dash,
           visible: true, size: 1.07 };
       }
-      return { t, x: 1.75 - pos * 3.50, y: 1.50 + .025 * Math.sin(t * 18), z: -4.45, visible: active, size: 1.07 };
+      return { t, x: 1.75 - pos * 3.50, y: 1.50 + .025 * Math.sin(t * 18), z: -4.45, visible: active, size: 1.20 };
     }
     return nearGhostSample(t, exposureAge, this.recognizedAt);
   }
@@ -441,7 +441,9 @@ export class GhostWorld {
     if (!total) return;
     // One readable human figure, with a few faint positional echoes.
     // Do not convert the ghost into a glowing cloud of repeated silhouettes.
-    const strength = film.density * (1 - film.bleach * .6);
+    // Success-grade negatives are immediately legible, not translucent
+    // silhouettes that the result screen inexplicably calls captured.
+    const strength = Math.pow(film.density, .72) * 1.25 * (1 - film.bleach * .6);
     let mid = 0, accumulated = 0;
     for (let i = 0; i < film.weights.length; i++) {
       accumulated += film.weights[i];

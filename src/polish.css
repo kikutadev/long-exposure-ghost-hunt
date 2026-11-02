@@ -216,3 +216,16 @@
   .secret-ghost,.secret-evidence,.secret-paper-last,.secret-paper-operator,
   .secret-empty,.secret-revelation{transition:none!important}
 }
+
+/* Six outcomes need compact rows on short phones; list stays scrollable. */
+@media(max-height:720px){
+  .endings-archive{padding-top:12px;padding-bottom:12px}
+  .endings-archive-body{margin:auto 0 0}
+  .ending-archive-kicker{margin-top:8px}
+  .ending-entry{padding:8px 0}
+  .ending-name{font-size:20px}
+  .endings-archive h2{font-size:54px;margin:4px 0 10px}
+  .endings-secret-button{min-height:40px;margin-top:9px}
+  .endings-archive-foot{margin-top:10px}
+}
+.end-screen[data-ending="pristine"] .end-title{font-size:clamp(50px,14vw,78px)}

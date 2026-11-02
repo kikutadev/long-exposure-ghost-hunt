@@ -5,11 +5,11 @@ import './death.css';
 import { GAME_MARKUP } from './view';
 import { Sound } from './audio';
 import { ShutterIris } from './iris';
-import { evaluateShot, assessFatalExposure, exposureLimit, formExposure, type DeathCause, type ShotResult } from './shot';
+import { evaluateShot, assessFatalExposure, exposureLimit, formExposure, isReadableExposure, type DeathCause, type ShotResult } from './shot';
 import { bindCameraInput } from './input';
 import { ExposureSession } from './exposure-session';
 import { DeathScreen } from './death-screen';
-import { ENDINGS, EndingArchive, type EndingId } from './endings';
+import { ENDINGS, EndingArchive, completionEnding, type EndingId } from './endings';
 
 type Phase = 'intro' | 'look' | 'opening' | 'exposing' | 'closing' | 'develop' | 'result' | 'album' | 'end' | 'dying' | 'dead' | 'secret';
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -45,6 +45,7 @@ let secretBeat = 0;
 
 const photos: string[] = [];
 const photoTimes: number[] = [];
+const photoQualities: number[] = [];
 const history: string[] = [];
 let phase: Phase = 'intro';
 let act = 0;
@@ -68,6 +69,7 @@ let lastPaperCycle = -1;
 let lastChairCycle = -1;
 let exposurePaperPlayed = false;
 let exposureChairPlayed = false;
+let exposureWarningPlayed = false;
 
 
 const sound = new Sound();
@@ -78,7 +80,7 @@ const RECORDS = [
 ] as const;
 
 function syncEndingCounts() {
-  const count = `${String(endingArchive.count).padStart(2, '0')} / 04`;
+  const count = `${String(endingArchive.count).padStart(2, '0')} / ${String(ENDINGS.length).padStart(2, '0')}`;
   for (const selector of ['#endings-count', '#endings-count-end', '#endings-count-death', '#endings-total'])
     $(selector).textContent = count;
 }
@@ -98,7 +100,7 @@ function openEndingArchive(button: HTMLElement) {
       </div><span class="ending-state">${seen ? 'SEEN' : '—'}</span></div>`;
   }).join('');
   syncEndingCounts();
-  $('#secret-rewatch').classList.toggle('hidden', endingArchive.count !== ENDINGS.length);
+  $('#secret-rewatch').classList.toggle('hidden', !endingArchive.originalCollectionComplete && endingArchive.count !== ENDINGS.length);
   document.querySelectorAll<HTMLElement>('.screen').forEach(panel => { panel.inert = true; });
   $('#endings-archive').classList.remove('hidden');
   $<HTMLButtonElement>('#endings-close').focus();
@@ -111,7 +113,7 @@ function closeEndingArchive() {
 }
 
 function startSecret() {
-  if (phase === 'secret' || endingArchive.count !== ENDINGS.length) return;
+  if (phase === 'secret' || (!endingArchive.originalCollectionComplete && endingArchive.count !== ENDINGS.length)) return;
   sound.start();
   if (!$('#endings-archive').classList.contains('hidden')) closeEndingArchive();
   secretOrigin = phase;
@@ -164,7 +166,7 @@ function startGame() {
   $('#intro').classList.add('hidden');
   $('#hud').classList.add('ready');
   setPhase('look');
-  act = 0; shots = 0; currentResult = null; currentPhoto = ''; photos.length = 0; photoTimes.length = 0; history.length = 0;
+  act = 0; shots = 0; currentResult = null; currentPhoto = ''; photos.length = 0; photoTimes.length = 0; photoQualities.length = 0; history.length = 0;
   world.setAct(act);
   exposureSeconds = 0;
   syncHUD();
@@ -179,6 +181,12 @@ function advance() {
   if (act === 2) {
     setPhase('end'); endingClick = false;
     endPanel.classList.remove('last-click');
+    const pristine = completionEnding(photoQualities) === 'pristine';
+    endPanel.dataset.ending = pristine ? 'pristine' : 'fourth';
+    $('.end-title').innerHTML = pristine ? 'THREE<br/>PERFECT EXPOSURES.' : 'THREE<br/>EXPOSURES.';
+    $('.end-description').textContent = pristine
+      ? 'Every figure is clear. The fourth negative is untouched.'
+      : 'In every photograph, someone is looking back.';
     $<HTMLButtonElement>('#replay').disabled = true;
     $('#end-record').classList.add('hidden');
     $('#endings-open-end').classList.add('hidden');
@@ -249,7 +257,7 @@ function endExposure(forced = false) {
   exposureSeconds = capture.elapsed(t, exposureLimit(act));
   const danger = fatalState();
   if (danger.cause || forced) {
-    die(danger.cause ?? (act === 1 ? 'RUN_THROUGH' : 'OVEREXPOSED'));
+    die(danger.cause ?? (act === 0 ? 'OVEREXPOSED' : act === 1 ? 'RUN_THROUGH' : 'EXPOSURE_BREACH'));
     return;
   }
   currentResult = shotState();
@@ -275,6 +283,7 @@ function endExposure(forced = false) {
   if (currentResult.success && photos.length === act) {
     photos.push(currentPhoto);
     photoTimes.push(exposureSeconds);
+    photoQualities.push(currentResult.quality);
   }
   syncHUD();
 }
@@ -288,6 +297,7 @@ function beginExposure() {
   capture.begin(now, worldTime);
   exposurePaperPlayed = false;
   exposureChairPlayed = false;
+  exposureWarningPlayed = false;
   world.resetObservation();
   exposureSeconds = 0;
   irisDirection = 'open'; irisStart = now;
@@ -403,7 +413,9 @@ function frame(tMs: number) {
     if (age >= .82) {
       setPhase('dead');
       deathScreen.show(deathCause ?? 'OVEREXPOSED', act, world.capture());
-      unlockEnding(act === 0 ? 'seen' : act === 1 ? 'run-through' : 'reached');
+      unlockEnding(deathCause === 'EXPOSURE_BREACH' ? 'breach'
+        : deathCause === 'OVEREXPOSED' ? 'seen'
+        : deathCause === 'RUN_THROUGH' ? 'run-through' : 'reached');
     }
     return;
   }
@@ -456,13 +468,17 @@ function frame(tMs: number) {
       const film = formExposure(capture.samples, act, exposureSeconds, sample => world.project(sample));
       // Recognition is caused by a readable exposure, not a scripted second.
       // Once it sees the photographer, the ghost freezes before attacking.
-      if (film.quality >= 45 && film.visibleTime >= .18 && world.recognizeAt(capture.recordedAge)) {
+      if (isReadableExposure(film, act) && world.recognizeAt(capture.recordedAge)) {
         sound.recognized();
       }
     }
     world.showExposure(capture.samples, capture.recordedAge);
     const danger = fatalState();
     game.classList.toggle('fatal-warning', danger.warning);
+    if (danger.warning && !exposureWarningPlayed) {
+      exposureWarningPlayed = true;
+      sound.warning();
+    }
     if (danger.cause) {
       die(danger.cause);
       return;
@@ -494,8 +510,11 @@ function frame(tMs: number) {
   if (phase === 'end' && !endingClick && t - phaseStarted > 1.5) {
     endingClick = true; sound.close();
     endPanel.classList.add('last-click');
+    $('#end-record').innerHTML = endPanel.dataset.ending === 'pristine'
+      ? 'EXPOSURE 004<br/>NEGATIVE: UNEXPOSED<br/>OPERATOR: UNKNOWN'
+      : 'EXPOSURE 004<br/>OPERATOR: UNKNOWN';
     $('#end-record').classList.remove('hidden');
-    unlockEnding('fourth');
+    unlockEnding(endPanel.dataset.ending === 'pristine' ? 'pristine' : 'fourth');
     $('#endings-open-end').classList.remove('hidden');
     $<HTMLButtonElement>('#replay').disabled = false;
   }
